@@ -140,7 +140,7 @@ journey
 
 ## 5. Доменные сущности
 
-Ключевые понятия системы на уровне vision. Детали модели данных — в `docs/data-model.md`.
+Ключевые понятия системы на уровне vision. Детали модели данных — в `docs/tech/data-model.md`.
 
 | Сущность | Описание |
 |----------|----------|
@@ -177,7 +177,7 @@ journey
 
 ## 7. Внешние интеграции
 
-Детали — в `docs/integrations.md`.
+Детали — в `docs/tech/integrations.md`.
 
 | Интеграция | Назначение |
 |------------|------------|
@@ -192,7 +192,8 @@ journey
 |---------|-------|
 | Язык | Python 3.12+ |
 | Зависимости | **uv** — `pyproject.toml` + lock-файл |
-| Backend-фреймворк | Определяется при старте backend-фазы |
+| Backend-фреймворк | **FastAPI** (ASGI); валидация и схемы — **Pydantic**; OpenAPI из кода (см. [ADR-002](tech/adr/adr-002-backend-framework.md)) |
+| ORM / доступ к БД | **SQLAlchemy 2.x** (async), драйвер **asyncpg**; миграции — **Alembic** (см. [ADR-003](tech/adr/adr-003-orm.md)) |
 | Telegram | **aiogram** 3.x, long polling (MVP); webhook при выделении HTTP-сервера |
 | LLM-клиент | **openai** SDK (OpenRouter как провайдер) |
 | БД | SQLite (только локальная разработка) → **PostgreSQL с первого деплоя** |
@@ -206,14 +207,14 @@ journey
 ```
 .
 ├── Makefile
-├── pyproject.toml          # метаданные и зависимости (uv)
 ├── README.md
-├── .venv/                  # не в git
-├── bot/                    # Telegram-бот (aiogram)
+├── bot/                    # Telegram-бот (aiogram), отдельный uv-проект
+│   ├── pyproject.toml
+│   ├── uv.lock
 │   └── src/
-│       └── pereobuyka_bot/
+│       └── pereobuyka/
 │           ├── main.py     # точка входа, polling
-│           ├── handlers/   # тонкие обработчики апдейтов
+│           ├── bot/        # handlers, router
 │           └── config.py
 ├── backend/                # ядро системы
 │   └── src/
@@ -230,8 +231,12 @@ journey
 └── docs/
     ├── idea.md
     ├── vision.md
-    ├── data-model.md       # детали модели данных (создаётся отдельно)
-    └── integrations.md     # детали внешних интеграций (создаётся отдельно)
+    └── tasks/
+└── tech/
+    ├── data-model.md       # детали модели данных
+    ├── integrations.md     # детали внешних интеграций
+    ├── adr/                # архитектурные решения
+    └── api/                # OpenAPI-контракт, коды ошибок
 ```
 
 ---
@@ -254,11 +259,13 @@ journey
 
 Значимые решения фиксируются в формате ADR (Architecture Decision Record) — с контекстом, альтернативами и обоснованием.
 
-Реестр и принципы ведения: [`docs/adr/README.md`](adr/README.md).
+Реестр и принципы ведения: [`docs/tech/adr/README.md`](tech/adr/README.md).
 
 | # | Решение | Статус |
 |---|---------|--------|
-| [ADR-001](adr/adr-001-database.md) | Выбор СУБД: PostgreSQL с первого деплоя | Accepted |
+| [ADR-001](tech/adr/adr-001-database.md) | Выбор СУБД: PostgreSQL с первого деплоя | Accepted |
+| [ADR-002](tech/adr/adr-002-backend-framework.md) | HTTP-фреймворк backend: FastAPI | Accepted |
+| [ADR-003](tech/adr/adr-003-orm.md) | ORM и миграции: SQLAlchemy 2 async, Alembic | Accepted |
 
 ---
 
@@ -266,7 +273,6 @@ journey
 
 | Вопрос | Статус |
 |--------|--------|
-| Backend-фреймворк (FastAPI / другой) | Определяется при старте backend-фазы |
 | Frontend-стек (React / Vue / другой) | Определяется при старте web-фазы |
 | Webhook vs. long polling для бота | Long polling на MVP; webhook при выделении сервера |
 | Монорепо vs. отдельные репозитории | Монорепо до явной потребности в разделении |

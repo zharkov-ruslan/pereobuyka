@@ -38,12 +38,12 @@
 
 | Этап | Название | Ценность | Статус | Основные области | Tasklist |
 |------|----------|----------|--------|------------------|----------|
-| 1 | Фундамент: backend и модель данных | Ядро системы готово к подключению каналов | ⚪ planned | backend, database | [tasklist-backend.md](tasks/tasklist-backend.md), [tasklist-database.md](tasks/tasklist-database.md) |
-| 2 | Telegram-бот MVP | Первый рабочий канал для клиента | ⚪ planned | backend, integrations | [tasklist-02-bot.md](tasklists/tasklist-02-bot.md), [tasklist-02-integrations.md](tasklists/tasklist-02-integrations.md) |
-| 3 | LLM-консультант | Диалоговая консультация через бота | ⚪ planned | backend, integrations | [tasklist-03-llm.md](tasklists/tasklist-03-llm.md) |
-| 4 | Административный веб-интерфейс | Управление прайсом, расписанием и записями без разработчика | ⚪ planned | frontend, backend | [tasklist-04-admin-web.md](tasklists/tasklist-04-admin-web.md) |
-| 5 | Клиентский веб-интерфейс | Альтернативный канал: те же сценарии, что в боте | ⚪ planned | frontend, backend | [tasklist-05-client-web.md](tasklists/tasklist-05-client-web.md) |
-| 6 | Production-ready и delivery | Система пригодна к эксплуатации и обслуживанию | ⚪ planned | devops | [tasklist-06-devops.md](tasklists/tasklist-06-devops.md) |
+| 1 | Фундамент: backend и модель данных | Ядро системы готово к подключению каналов | 🔄 in-progress | backend, database | [tasklist-backend.md](tasks/tasklist-backend.md), [tasklist-database.md](tasks/tasklist-database.md) |
+| 2 | Telegram-бот MVP | Первый рабочий канал для клиента | 🔄 in-progress | backend, integrations | [tasklist-02-bot.md](tasks/tasklist-02-bot.md), [tasklist-02-integrations.md](tasks/tasklist-02-integrations.md) |
+| 3 | LLM-консультант | Диалоговая консультация через бота | ⚪ planned | backend, integrations | [tasklist-03-llm.md](tasks/tasklist-03-llm.md) |
+| 4 | Административный веб-интерфейс | Управление прайсом, расписанием и записями без разработчика | ⚪ planned | frontend, backend | [tasklist-04-admin-web.md](tasks/tasklist-04-admin-web.md) |
+| 5 | Клиентский веб-интерфейс | Альтернативный канал: те же сценарии, что в боте | ⚪ planned | frontend, backend | [tasklist-05-client-web.md](tasks/tasklist-05-client-web.md) |
+| 6 | Production-ready и delivery | Система пригодна к эксплуатации и обслуживанию | ⚪ planned | devops | [tasklist-06-devops.md](tasks/tasklist-06-devops.md) |
 
 ---
 
@@ -60,13 +60,15 @@
 
 **Результат:** Запущенный backend с REST API, миграциями БД, базовым набором сервисов и покрытием ключевых сценариев тестами.
 
-**Статус:** ⚪ planned
+**Статус:** 🔄 in-progress
+
+**Факт реализации (на текущий момент):** по [tasklist-backend.md](tasks/tasklist-backend.md) выполнены итерации **iter-01–iter-07**: стек и ADR, полный **контракт API** (OpenAPI), каркас FastAPI, **MVP-эндпоинты** (каталог услуг, слоты, создание записи), in-memory storage, автотесты API, документация backend, **бот** вызывает API по HTTP (см. этап 2). Отдельный **tasklist-database** и **персистентная БД с миграциями** в эксплуатации, а также **полная** реализация всех маршруктов и сущностей из `data-model` ещё не закрывают исходный DoD этапа — работа продолжается.
 
 **Активные области:** backend, database
 
 **Что должно появиться:**
 - Инициализирован проект (`pyproject.toml`, `uv`, структура репозитория по `docs/vision.md`)
-- Реализованы доменные модели и репозитории для всех сущностей из `docs/data-model.md`
+- Реализованы доменные модели и репозитории для всех сущностей из `docs/tech/data-model.md`
 - Реализованы сервисы: управление прайсом, расписанием, расчёт слотов, записи, визиты, лояльность
 - Задан и описан API-контракт backend (маршруты, схемы запросов/ответов)
 - Настроены миграции БД (SQLite для разработки, PostgreSQL-совместимые)
@@ -80,7 +82,7 @@
 - `backend/` — структура проекта, сервисы, репозитории, модели
 - `Makefile` с командами запуска, миграций, тестов
 - Миграции БД
-- `docs/tasklists/tasklist-01-backend.md`, `docs/tasklists/tasklist-01-database.md`
+- `docs/tasks/tasklist-backend.md`, `docs/tasks/tasklist-database.md`
 
 **Связь с tasklists:**
 - [`tasklist-backend.md`](tasks/tasklist-backend.md)
@@ -97,11 +99,13 @@
 
 **Результат:** Работающий Telegram-бот, подключённый к backend: клиент может зарегистрироваться, посмотреть прайс, записаться и узнать баланс бонусов.
 
-**Статус:** ⚪ planned
+**Статус:** 🔄 in-progress
+
+**Факт реализации (на текущий момент):** проект бота в [`bot/`](../bot/) (aiogram 3.x), **HTTP-клиент** к backend, сценарии **каталог услуг** (`/services`) и **запись** (`/book`, FSM) через реализованные MVP API; авторизация бота с backend — **BOT_SECRET** (временная схема). Нет отдельного tasklist-файла «бот» в `docs/tasks/` — детализация в [tasklist-backend.md](tasks/tasklist-backend.md) (iter-07). **Не реализовано** относительно целей этапа: регистрация пользователя в БД через API, просмотр/отмена списка записей, баланс бонусов и история визитов в боте, отдельные tasklist-02-* (файлы-заглушки в таблице обзора).
 
 **Активные области:** backend, integrations
 
-**Зависимость:** Этап 1 завершён (API-контракты зафиксированы).
+**Зависимость:** API-контракты и MVP backend доступны (см. этап 1); полное завершение этапа 1 по БД/домену не блокирует текущий срез бота, но расширение сценариев опирается на дальнейшую реализацию API.
 
 **Что должно появиться:**
 - Инициализирован проект бота (`bot/`, aiogram 3.x, long polling)
@@ -115,11 +119,11 @@
 
 **Выходные артефакты:**
 - `bot/` — handlers, config, точка входа
-- `docs/tasklists/tasklist-02-bot.md`, `docs/tasklists/tasklist-02-integrations.md`
+- `docs/tasks/tasklist-02-bot.md`, `docs/tasks/tasklist-02-integrations.md`
 
 **Связь с tasklists:**
-- [`tasklist-02-bot.md`](tasklists/tasklist-02-bot.md)
-- [`tasklist-02-integrations.md`](tasklists/tasklist-02-integrations.md)
+- [`tasklist-02-bot.md`](tasks/tasklist-02-bot.md)
+- [`tasklist-02-integrations.md`](tasks/tasklist-02-integrations.md)
 
 ---
 
@@ -150,10 +154,10 @@ LLM-консультант — ключевая дифференцирующая
 
 **Выходные артефакты:**
 - `backend/src/pereobuyka/llm/` — клиент, промпты, контекст
-- `docs/tasklists/tasklist-03-llm.md`
+- `docs/tasks/tasklist-03-llm.md`
 
 **Связь с tasklists:**
-- [`tasklist-03-llm.md`](tasklists/tasklist-03-llm.md)
+- [`tasklist-03-llm.md`](tasks/tasklist-03-llm.md)
 
 ---
 
@@ -185,10 +189,10 @@ LLM-консультант — ключевая дифференцирующая
 **Выходные артефакты:**
 - `web/` — frontend-проект (стек TBD)
 - ADR на выбор frontend-стека
-- `docs/tasklists/tasklist-04-admin-web.md`
+- `docs/tasks/tasklist-04-admin-web.md`
 
 **Связь с tasklists:**
-- [`tasklist-04-admin-web.md`](tasklists/tasklist-04-admin-web.md)
+- [`tasklist-04-admin-web.md`](tasks/tasklist-04-admin-web.md)
 
 ---
 
@@ -197,7 +201,7 @@ LLM-консультант — ключевая дифференцирующая
 **Цель:** Реализовать альтернативный канал для клиента через веб — те же сценарии, что и в боте, без привязки к Telegram.
 
 **Ценность этапа:**
-Клиентский веб снимает зависимость от Telegram как единственного канала. Клиент без Telegram-аккаунта или предпочитающий веб получает полноценный доступ к сервису. Кроме того, веб-канал является резервным при недоступности Telegram (см. `docs/integrations.md`).
+Клиентский веб снимает зависимость от Telegram как единственного канала. Клиент без Telegram-аккаунта или предпочитающий веб получает полноценный доступ к сервису. Кроме того, веб-канал является резервным при недоступности Telegram (см. `docs/tech/integrations.md`).
 
 **Результат:** Веб-интерфейс клиента: консультация, просмотр прайса, запись, история визитов, баланс бонусов — идентично возможностям бота.
 
@@ -218,10 +222,10 @@ LLM-консультант — ключевая дифференцирующая
 
 **Выходные артефакты:**
 - Клиентская часть `web/` (новые экраны и маршруты)
-- `docs/tasklists/tasklist-05-client-web.md`
+- `docs/tasks/tasklist-05-client-web.md`
 
 **Связь с tasklists:**
-- [`tasklist-05-client-web.md`](tasklists/tasklist-05-client-web.md)
+- [`tasklist-05-client-web.md`](tasks/tasklist-05-client-web.md)
 
 ---
 
@@ -254,8 +258,8 @@ LLM-консультант — ключевая дифференцирующая
 **Выходные артефакты:**
 - `Dockerfile`, `docker-compose.yml`
 - CI-конфигурация (`.github/workflows/` или аналог)
-- `docs/tasklists/tasklist-06-devops.md`
+- `docs/tasks/tasklist-06-devops.md`
 - `README.md` с инструкцией по запуску
 
 **Связь с tasklists:**
-- [`tasklist-06-devops.md`](tasklists/tasklist-06-devops.md)
+- [`tasklist-06-devops.md`](tasks/tasklist-06-devops.md)

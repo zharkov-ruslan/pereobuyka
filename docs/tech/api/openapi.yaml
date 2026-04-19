@@ -1,0 +1,1505 @@
+openapi: 3.0.3
+info:
+  title: Pereobuyka API
+  description: |
+    HTTP API ядра «Переобуйка». Сценарии — docs/vision.md §4.
+    LLM не подменяет факты; контекст подмешивается на сервере (vision §6).
+  version: 1.0.0
+servers:
+  - url: /
+tags:
+  - name: Auth
+    description: Идентификация и получение токена (upsert пользователя)
+  - name: Public
+    description: Публичные эндпоинты без авторизации
+  - name: Client
+    description: Эндпоинты клиента (Bearer)
+  - name: Consultation
+    description: LLM-консультация (Bearer)
+  - name: Admin
+    description: Управление системой (Bearer, role=admin)
+
+paths:
+  /api/v1/auth/telegram:
+    post:
+      tags: [Auth]
+      summary: Вход / регистрация через Telegram (upsert User)
+      operationId: authTelegram
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramAuthRequest"
+      responses:
+        "200":
+          description: OK — существующий пользователь вошёл
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "201":
+          description: Created — новый пользователь зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/me:
+    get:
+      tags: [Client]
+      summary: Текущий пользователь
+      operationId: getMe
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/services:
+    get:
+      tags: [Public]
+      summary: Каталог услуг
+      operationId: listServices
+      parameters:
+        - name: active_only
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceListResponse"
+
+  /api/v1/slots:
+    get:
+      tags: [Public]
+      summary: Свободные окна
+      operationId: listSlots
+      parameters:
+        - name: date_from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: service_ids
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+          style: form
+          explode: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlotListResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/appointments:
+    post:
+      tags: [Client]
+      summary: Создать запись
+      operationId: createAppointment
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppointmentCreateRequest"
+      responses:
+        "201":
+          description: Создано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/DomainError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/me/appointments:
+    get:
+      tags: [Client]
+      summary: Мои записи
+      operationId: listMyAppointments
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/AppointmentStatus"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppointmentListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/me/appointments/{appointment_id}:
+    parameters:
+      - $ref: "#/components/parameters/AppointmentId"
+    patch:
+      tags: [Client]
+      summary: Обновить запись (в т.ч. отменить)
+      operationId: patchMyAppointment
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppointmentPatchRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/DomainError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/me/visits:
+    get:
+      tags: [Client]
+      summary: История визитов
+      operationId: listMyVisits
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisitListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/me/bonus-account:
+    get:
+      tags: [Client]
+      summary: Бонусный счёт
+      operationId: getMyBonusAccount
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BonusAccount"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/me/bonus-transactions:
+    get:
+      tags: [Client]
+      summary: История бонусных операций
+      operationId: listMyBonusTransactions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BonusTransactionListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/loyalty/rules:
+    get:
+      tags: [Public]
+      summary: Правила программы лояльности
+      operationId: getLoyaltyRules
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoyaltyRules"
+
+  /api/v1/consultation/messages:
+    post:
+      tags: [Consultation]
+      summary: Отправить сообщение в LLM
+      operationId: postConsultationMessage
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsultationRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsultationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/admin/services:
+    get:
+      tags: [Admin]
+      summary: Список услуг (включая неактивные)
+      operationId: adminListServices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: is_active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      summary: Создать услугу
+      operationId: adminCreateService
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceCreate"
+      responses:
+        "201":
+          description: Создано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/admin/services/{service_id}:
+    parameters:
+      - $ref: "#/components/parameters/ServiceId"
+    get:
+      tags: [Admin]
+      summary: Получить услугу
+      operationId: adminGetService
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Admin]
+      summary: Обновить услугу
+      operationId: adminPatchService
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServicePatch"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      tags: [Admin]
+      summary: Удалить услугу
+      operationId: adminDeleteService
+      security:
+        - BearerAuth: []
+      responses:
+        "204":
+          description: Удалено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/schedule/rules:
+    get:
+      tags: [Admin]
+      summary: Шаблон расписания (дни недели)
+      operationId: adminListScheduleRules
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: "2026-04-01"
+        - name: date_to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: "2026-04-30"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleRuleListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    post:
+      tags: [Admin]
+      summary: Добавить правило дня недели
+      operationId: adminCreateScheduleRule
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleRuleCreate"
+      responses:
+        "201":
+          description: Создано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleRule"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/admin/schedule/rules/{rule_id}:
+    parameters:
+      - $ref: "#/components/parameters/ScheduleRuleId"
+    get:
+      tags: [Admin]
+      summary: Получить правило расписания
+      operationId: adminGetScheduleRule
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleRule"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Admin]
+      summary: Изменить правило расписания
+      operationId: adminPatchScheduleRule
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleRulePatch"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleRule"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      tags: [Admin]
+      summary: Удалить правило расписания
+      operationId: adminDeleteScheduleRule
+      security:
+        - BearerAuth: []
+      responses:
+        "204":
+          description: Удалено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/schedule/exceptions:
+    get:
+      tags: [Admin]
+      summary: Исключения расписания (конкретные даты)
+      operationId: adminListScheduleExceptions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleExceptionListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      summary: Добавить исключение расписания
+      operationId: adminCreateScheduleException
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleExceptionCreate"
+      responses:
+        "201":
+          description: Создано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleException"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/admin/schedule/exceptions/{exception_id}:
+    parameters:
+      - $ref: "#/components/parameters/ScheduleExceptionId"
+    get:
+      tags: [Admin]
+      summary: Получить исключение расписания
+      operationId: adminGetScheduleException
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleException"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Admin]
+      summary: Изменить исключение расписания
+      operationId: adminPatchScheduleException
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleExceptionPatch"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleException"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      tags: [Admin]
+      summary: Удалить исключение расписания
+      operationId: adminDeleteScheduleException
+      security:
+        - BearerAuth: []
+      responses:
+        "204":
+          description: Удалено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/appointments:
+    get:
+      tags: [Admin]
+      summary: Журнал записей и загрузка
+      operationId: adminListAppointments
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/AppointmentStatus"
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAppointmentListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/visits:
+    post:
+      tags: [Admin]
+      summary: Подтвердить визит (факт услуг и начисление бонусов)
+      operationId: adminConfirmVisit
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VisitConfirmRequest"
+      responses:
+        "201":
+          description: Создано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Visit"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/DomainError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/admin/users/{user_id}/bonus-account:
+    get:
+      tags: [Admin]
+      summary: Бонусный счёт клиента
+      operationId: adminGetUserBonusAccount
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BonusAccount"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/users/{user_id}/bonus-transactions:
+    post:
+      tags: [Admin]
+      summary: Ручная корректировка бонусов
+      operationId: adminCreateBonusAdjustment
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BonusAdjustRequest"
+      responses:
+        "201":
+          description: Создано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BonusTransaction"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/DomainError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AppointmentId:
+      name: appointment_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ServiceId:
+      name: service_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ScheduleRuleId:
+      name: rule_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ScheduleExceptionId:
+      name: exception_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Unauthorized:
+      description: Нет или невалидный токен
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Недостаточно прав
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationError:
+      description: Ошибка валидации тела или параметров
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    DomainError:
+      description: Доменная ошибка (конфликт, нарушение бизнес-правила)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ServiceUnavailable:
+      description: Внешний сервис недоступен (например, LLM-провайдер)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+
+    # ── Core / shared ──────────────────────────────────────────────────────────
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+
+    UserRole:
+      type: string
+      enum: [client, admin]
+
+    UserSource:
+      type: string
+      enum: [telegram, web]
+
+    User:
+      type: object
+      required: [id, name, role, registered_at, source]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        role:
+          $ref: "#/components/schemas/UserRole"
+        telegram_id:
+          type: integer
+          format: int64
+          nullable: true
+        registered_at:
+          type: string
+          format: date-time
+        source:
+          $ref: "#/components/schemas/UserSource"
+
+    TelegramAuthRequest:
+      type: object
+      required: [telegram_id, name]
+      properties:
+        telegram_id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        phone:
+          type: string
+
+    TokenResponse:
+      type: object
+      required: [access_token, token_type, user]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum: [bearer]
+        user:
+          $ref: "#/components/schemas/User"
+
+    # ── Services ───────────────────────────────────────────────────────────────
+
+    Service:
+      type: object
+      required: [id, name, description, price, duration_minutes, is_active]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: string
+          description: "Цена услуги в рублях, десятичная строка"
+          example: "2500.00"
+        duration_minutes:
+          type: integer
+          description: Норма времени на выполнение (минуты)
+        is_active:
+          type: boolean
+
+    ServiceCreate:
+      type: object
+      required: [name, description, price, duration_minutes, is_active]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: string
+          description: "Цена услуги в рублях, десятичная строка"
+          example: "2500.00"
+        duration_minutes:
+          type: integer
+        is_active:
+          type: boolean
+
+    ServicePatch:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: string
+          description: "Цена услуги в рублях, десятичная строка"
+          example: "2500.00"
+        duration_minutes:
+          type: integer
+        is_active:
+          type: boolean
+
+    ServiceListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Service"
+
+    # ── Schedule ───────────────────────────────────────────────────────────────
+
+    ScheduleRule:
+      type: object
+      required: [id, weekday, start_time, end_time, is_day_off]
+      properties:
+        id:
+          type: string
+          format: uuid
+        weekday:
+          type: integer
+          minimum: 0
+          maximum: 6
+          description: "День недели: 0 — понедельник, 6 — воскресенье"
+        start_time:
+          type: string
+          format: time
+          example: "09:00:00"
+        end_time:
+          type: string
+          format: time
+          example: "18:00:00"
+        is_day_off:
+          type: boolean
+
+    ScheduleRuleCreate:
+      type: object
+      required: [weekday, start_time, end_time, is_day_off]
+      properties:
+        weekday:
+          type: integer
+          minimum: 0
+          maximum: 6
+          description: "День недели: 0 — понедельник, 6 — воскресенье"
+        start_time:
+          type: string
+          format: time
+          example: "09:00:00"
+        end_time:
+          type: string
+          format: time
+          example: "18:00:00"
+        is_day_off:
+          type: boolean
+
+    ScheduleRulePatch:
+      type: object
+      properties:
+        weekday:
+          type: integer
+          minimum: 0
+          maximum: 6
+        start_time:
+          type: string
+          format: time
+          example: "09:00:00"
+        end_time:
+          type: string
+          format: time
+          example: "18:00:00"
+        is_day_off:
+          type: boolean
+
+    ScheduleRuleListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleRule"
+
+    ScheduleException:
+      type: object
+      required: [id, date, start_time, end_time, is_day_off]
+      properties:
+        id:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        start_time:
+          type: string
+          format: time
+          example: "09:00:00"
+        end_time:
+          type: string
+          format: time
+          example: "18:00:00"
+        is_day_off:
+          type: boolean
+
+    ScheduleExceptionCreate:
+      type: object
+      required: [date, start_time, end_time, is_day_off]
+      properties:
+        date:
+          type: string
+          format: date
+        start_time:
+          type: string
+          format: time
+          example: "09:00:00"
+        end_time:
+          type: string
+          format: time
+          example: "18:00:00"
+        is_day_off:
+          type: boolean
+
+    ScheduleExceptionPatch:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        start_time:
+          type: string
+          format: time
+          example: "09:00:00"
+        end_time:
+          type: string
+          format: time
+          example: "18:00:00"
+        is_day_off:
+          type: boolean
+
+    ScheduleExceptionListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleException"
+
+    # ── Appointments ──────────────────────────────────────────────────────────
+
+    AppointmentStatus:
+      type: string
+      enum: [scheduled, completed, cancelled]
+
+    ServiceLineItem:
+      type: object
+      description: Позиция услуги в записи или визите
+      required: [service_id, quantity]
+      properties:
+        service_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+
+    AppointmentCreateRequest:
+      type: object
+      required: [starts_at, service_items]
+      properties:
+        starts_at:
+          type: string
+          format: date-time
+        service_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceLineItem"
+        bonus_spend:
+          type: integer
+          minimum: 0
+          description: "Количество бонусов для списания. Ограничено max_bonus_spend_percent из LoyaltyRules."
+
+    AppointmentPatchRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [cancelled]
+          description: Клиент может перевести запись только в статус cancelled
+
+    Appointment:
+      type: object
+      required: [id, user_id, starts_at, ends_at, total_price, status, created_at, service_items]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        total_price:
+          type: string
+          description: "Расчётная стоимость на момент записи, десятичная строка"
+          example: "4300.00"
+        status:
+          $ref: "#/components/schemas/AppointmentStatus"
+        created_at:
+          type: string
+          format: date-time
+        service_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceLineItem"
+
+    AppointmentListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Appointment"
+        total:
+          type: integer
+          description: Общее число записей без учёта пагинации
+
+    AppointmentAdmin:
+      allOf:
+        - $ref: "#/components/schemas/Appointment"
+        - type: object
+          properties:
+            user:
+              $ref: "#/components/schemas/User"
+
+    AdminAppointmentListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppointmentAdmin"
+        total:
+          type: integer
+          description: Общее число записей без учёта пагинации
+
+    SlotWindow:
+      type: object
+      required: [starts_at, ends_at]
+      properties:
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+
+    SlotListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SlotWindow"
+
+    # ── Visits ────────────────────────────────────────────────────────────────
+
+    Visit:
+      type: object
+      required:
+        - id
+        - appointment_id
+        - total_amount
+        - bonus_spent
+        - bonus_earned
+        - confirmed_at
+        - confirmed_by_user_id
+        - lines
+      properties:
+        id:
+          type: string
+          format: uuid
+        appointment_id:
+          type: string
+          format: uuid
+        total_amount:
+          type: string
+          description: "Итоговая сумма оплаты, десятичная строка"
+          example: "4300.00"
+        bonus_spent:
+          type: integer
+        bonus_earned:
+          type: integer
+          description: Начислено бонусов по итогам визита (рассчитывает сервер)
+        confirmed_at:
+          type: string
+          format: date-time
+        confirmed_by_user_id:
+          type: string
+          format: uuid
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceLineItem"
+
+    VisitListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Visit"
+        total:
+          type: integer
+          description: Общее число визитов без учёта пагинации
+
+    VisitConfirmRequest:
+      type: object
+      required: [appointment_id, lines, total_amount]
+      properties:
+        appointment_id:
+          type: string
+          format: uuid
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceLineItem"
+        total_amount:
+          type: string
+          description: "Итоговая сумма оплаты, десятичная строка"
+          example: "4300.00"
+        bonus_spent:
+          type: integer
+          minimum: 0
+          description: "Количество бонусов, списанных при оплате. Если не передано — считается 0."
+
+    # ── Bonus ─────────────────────────────────────────────────────────────────
+
+    BonusAccount:
+      type: object
+      required: [id, user_id, balance]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        balance:
+          type: integer
+
+    BonusTransactionType:
+      type: string
+      enum: [earn, spend, adjust]
+
+    BonusTransaction:
+      type: object
+      required: [id, type, amount, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/BonusTransactionType"
+        amount:
+          type: integer
+          description: "Положительное — начисление, отрицательное — списание"
+        visit_id:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        comment:
+          type: string
+          nullable: true
+
+    BonusTransactionListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BonusTransaction"
+        total:
+          type: integer
+
+    BonusAdjustRequest:
+      type: object
+      required: [amount, comment]
+      properties:
+        amount:
+          type: integer
+          description: "Положительное — начисление, отрицательное — списание. Итоговый баланс не может быть отрицательным."
+        comment:
+          type: string
+
+    # ── Loyalty ───────────────────────────────────────────────────────────────
+
+    LoyaltyRules:
+      type: object
+      required: [max_bonus_spend_percent, earn_percent_after_visit]
+      properties:
+        max_bonus_spend_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Максимальная доля стоимости визита, оплачиваемая бонусами (%)
+        earn_percent_after_visit:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Процент от суммы визита, начисляемый бонусами (%)
+
+    # ── Consultation ──────────────────────────────────────────────────────────
+
+    ConsultationRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    ConsultationResponse:
+      type: object
+      required: [reply]
+      properties:
+        reply:
+          type: string
+        request_id:
+          type: string
+          format: uuid
+          description: Идентификатор запроса для поддержки и диагностики

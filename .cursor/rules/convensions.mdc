@@ -11,11 +11,26 @@ alwaysApply: true
 - **Стек фиксирован**: Python 3.12+, `uv` (`pyproject.toml` + lock), `.venv` в корне (см. `docs/vision.md`, раздел 1).
 - **Структура и границы**:
   - **handlers** (aiogram) тонкие: парсинг апдейтов, роутинг, FSM при необходимости.
+  - **API** (FastAPI): роутеры тонкие — HTTP, статусы, привязка схем; бизнес-правила не в эндпоинтах. Тела и query — **Pydantic**-модели; зависимости (`Depends`) — конфиг, сервисы, репозитории; без толстой логики в функциях маршрутов.
   - **services** держат бизнес-правила.
   - **storage/repos** изолируют БД/хранилище.
   - **llm** только клиент/промпты/вызовы; факты (прайс/слоты/правила) готовят сервисы.
   (см. `docs/vision.md`, разделы 3–4, 6–7)
+- **Тесты (backend):** **pytest**; API — через клиент фреймворка (`TestClient` / httpx async) после появления приложения; границы (storage, внешние API) мокать точечно; дублировать доменные сценарии в слое HTTP только там, где проверяется контракт (статусы, тело ответа).
 - **ООП**: один публичный класс — один файл; не раздувать модули ради «красоты» (см. `docs/vision.md`, раздел 2).
 - **LLM-правило**: модель не «придумывает» цены/слоты/правила — только из переданного контекста; при нехватке данных просит уточнение; function calling — только по необходимости (см. `docs/vision.md`, раздел 6).
 - **Конфиг и секреты**: всё через env/локальный `.env` (не коммитить); валидировать критичные ключи на старте (см. `docs/vision.md`, раздел 8).
 - **Логи**: `logging`, без токенов/ключей/лишних персональных данных; ошибки интеграций — с диагностичным контекстом без секретов (см. `docs/vision.md`, раздел 9).
+
+## Agent skills (репозиторий)
+
+Под задачу подключай соответствующий skill: читай `SKILL.md` целиком и следуй ему; при конфликте приоритет у `docs/vision.md` и этому файлу.
+
+| Задача | Skill | Путь |
+|--------|--------|------|
+| Дизайн и ревью REST/GraphQL API, контракты, ошибки, версии | **api-design-principles** | [`.agents/skills/api-design-principles/SKILL.md`](.agents/skills/api-design-principles/SKILL.md) |
+| Asyncio, конкурентность, неблокирующий I/O в Python | **async-python-patterns** | [`.agents/skills/async-python-patterns/SKILL.md`](.agents/skills/async-python-patterns/SKILL.md) |
+| Каркас FastAPI, структура приложения, DI и обработка ошибок на уровне сервиса | **fastapi-templates** | [`.agents/skills/fastapi-templates/SKILL.md`](.agents/skills/fastapi-templates/SKILL.md) |
+| Слои DDD / onion, сущности, репозитории, use cases в связке с FastAPI | **python-fastapi-ddd-skill** | [`.agents/skills/python-fastapi-ddd-skill/SKILL.md`](.agents/skills/python-fastapi-ddd-skill/SKILL.md) |
+| Тесты: pytest, фикстуры, моки, TDD | **python-testing-patterns** | [`.agents/skills/python-testing-patterns/SKILL.md`](.agents/skills/python-testing-patterns/SKILL.md) |
+| Оформление и ревью `api-contracts.md`: таблицы, якоря, коды ответов, синхронизация с OpenAPI | **api-contract-custom** | [`.agents/skills/api-contract-custom/SKILL.md`](.agents/skills/api-contract-custom/SKILL.md) |
