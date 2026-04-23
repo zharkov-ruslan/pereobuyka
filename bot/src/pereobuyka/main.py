@@ -25,7 +25,11 @@ async def _run() -> None:
     bot = Bot(token=config.telegram_bot_token)
     dp = Dispatcher(storage=MemoryStorage())
 
-    backend = BackendClient(config.backend_base_url, config.bot_secret)
+    backend = BackendClient(
+        config.backend_base_url,
+        config.bot_secret,
+        consultation_read_timeout=config.consultation_request_timeout,
+    )
 
     dp.include_router(build_root_router(backend=backend))
 

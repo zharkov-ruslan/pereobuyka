@@ -89,6 +89,9 @@ make backend-stop
 | `OPENROUTER_API_KEY` | нет | *(пусто)* | API-ключ OpenRouter — нужен только для LLM-консультации (этап 3) |
 | `OPENROUTER_MODEL` | нет | `openai/gpt-4o-mini` | Идентификатор модели OpenRouter |
 | `OPENROUTER_BASE_URL` | нет | `https://openrouter.ai/api/v1` | Base URL OpenRouter API |
+| `CONSULTATION_LLM_TIMEOUT_SECONDS` | нет | `45` | Таймаут HTTP к OpenRouter (секунды) |
+| `CONSULTATION_MAX_TOOL_ROUNDS` | нет | `6` | Максимум раундов function-calling на один запрос консультации |
+| `CONSULTATION_SYSTEM_PROMPT` | нет | *(пусто)* | Полный системный промпт; если пусто — используется дефолт из кода |
 
 > Не публикуй `.env` в репозиторий — он добавлен в `.gitignore`.
 

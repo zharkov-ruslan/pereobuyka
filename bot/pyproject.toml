@@ -7,7 +7,6 @@ requires-python = ">=3.12"
 dependencies = [
   "aiogram>=3.0.0",
   "httpx>=0.27.0",
-  "openai>=1.0.0",
   "python-dotenv>=1.0.0",
 ]
 
@@ -24,9 +23,16 @@ package = true
 [dependency-groups]
 dev = [
   "mypy>=1.20.1",
+  "pytest>=8.0.0",
+  "pytest-asyncio>=0.23.0",
   "ruff>=0.5.0",
   "ty>=0.0.1a16",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
 
 # Стиль: см. .agents/skills/python-code-style — ruff как единый линтер/форматтер
 [tool.ruff]

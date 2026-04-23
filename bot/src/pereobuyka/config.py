@@ -6,8 +6,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from pereobuyka.llm.system_prompt import DEFAULT_SYSTEM_PROMPT
-
 # Каталог проекта бота (…/bot/) при запуске из исходников.
 _BOT_PROJECT_DIR = Path(__file__).resolve().parents[2]
 
@@ -23,28 +21,27 @@ def _env(name: str, default: str) -> str:
     return os.getenv(name, default).strip()
 
 
-def _system_prompt_from_env() -> str:
-    raw = os.getenv("SYSTEM_PROMPT")
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
     if raw is None or not raw.strip():
-        return DEFAULT_SYSTEM_PROMPT
-    return raw.strip()
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
 
 
 @dataclass(frozen=True, slots=True)
 class AppConfig:
     telegram_bot_token: str
 
-    openrouter_api_key: str
-    openrouter_model: str
-    openrouter_base_url: str
-
-    system_prompt: str
-
     log_level: str
 
     # HTTP-клиент к backend
     backend_base_url: str
     bot_secret: str
+    # POST /consultation: несколько раундов tool-calls на бэке; 60s часто мало
+    consultation_request_timeout: float
 
 
 def load_config() -> AppConfig:
@@ -57,11 +54,8 @@ def load_config() -> AppConfig:
 
     return AppConfig(
         telegram_bot_token=_require_env("TELEGRAM_BOT_TOKEN"),
-        openrouter_api_key=_require_env("OPENROUTER_API_KEY"),
-        openrouter_model=_require_env("OPENROUTER_MODEL"),
-        openrouter_base_url=_env("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
-        system_prompt=_system_prompt_from_env(),
         log_level=_env("LOG_LEVEL", "INFO").upper(),
         backend_base_url=_env("BACKEND_BASE_URL", "http://localhost:8000"),
         bot_secret=_env("BOT_SECRET", ""),
+        consultation_request_timeout=_env_float("CONSULTATION_REQUEST_TIMEOUT", 300.0),
     )

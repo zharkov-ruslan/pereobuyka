@@ -4,6 +4,7 @@ from datetime import date as Date
 from datetime import datetime, time
 from decimal import Decimal
 from enum import StrEnum
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -267,8 +268,14 @@ class TokenResponse(BaseModel):
     user: User
 
 
+class ConsultationHistoryItem(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+
 class ConsultationRequest(BaseModel):
-    message: str
+    message: str = Field(min_length=1, max_length=4000)
+    history: list[ConsultationHistoryItem] = Field(default_factory=list, max_length=20)
 
 
 class ConsultationResponse(BaseModel):

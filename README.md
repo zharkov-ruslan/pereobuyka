@@ -21,7 +21,9 @@
 2) Выполни команду `/newbot` и следуй инструкциям (название и username бота).
 3) В ответ BotFather пришлёт токен — это и есть `TELEGRAM_BOT_TOKEN`.
 
-### `OPENROUTER_API_KEY`
+### `OPENROUTER_API_KEY` (для LLM-консультанта)
+
+Ключ OpenRouter настраивается **в backend** (`backend/.env`, переменная `OPENROUTER_API_KEY`) — именно backend вызывает модель и выполняет function-calling к данным сервиса.
 
 1) Как попасть в кабинет OpenRouter:
    - Открой `https://openrouter.ai/`
@@ -35,7 +37,7 @@
 
 ## Быстрый старт (Windows)
 
-### Backend (опционально, для записи через бота)
+### Backend (нужен для `/book`, `/bonus`, … и для `/ask`)
 
 ```bash
 make backend-install
@@ -58,7 +60,7 @@ make bot-install
 Copy-Item bot\.env.example bot\.env
 ```
 
-Заполнить значения в `bot/.env` (обязательные: `TELEGRAM_BOT_TOKEN`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`; для API — `BACKEND_BASE_URL`, `BOT_SECRET` в паре с backend).
+Заполнить значения в `bot/.env` (обязательные: `TELEGRAM_BOT_TOKEN`; для API — `BACKEND_BASE_URL`, `BOT_SECRET` в паре с backend).
 
 3) Запустить бота:
 
@@ -66,19 +68,23 @@ Copy-Item bot\.env.example bot\.env
 make bot-run
 ```
 
-Эквивалент из каталога `bot/`: `uv sync`, затем `uv run python -m pereobuyka.main`.
+Эквивалент из каталога `bot/`: `uv sync`, затем `uv run python run_bot.py` (см. `Makefile`).
 
-- **обязательные** (для старта бота): `TELEGRAM_BOT_TOKEN`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`
-- **опциональные**: `OPENROUTER_BASE_URL`, `LOG_LEVEL`, `SYSTEM_PROMPT`, `BACKEND_BASE_URL`, `BOT_SECRET`
+Тесты бота:
+
+```bash
+make bot-test
+```
+
+- **обязательные** (для старта бота): `TELEGRAM_BOT_TOKEN`
+- **опциональные**: `LOG_LEVEL`, `BACKEND_BASE_URL`, `BOT_SECRET`
 
 Пример для PowerShell:
 
 ```powershell
 $env:TELEGRAM_BOT_TOKEN="..."
-$env:OPENROUTER_API_KEY="..."
-$env:OPENROUTER_MODEL="openai/gpt-4o-mini"
 ```
 
 ## Примечания
 
-- LLM-консультации могут быть отключены до включения этапа 3; ключи OpenRouter при необходимости валидируются на старте согласно техвидению.
+- LLM-консультация включается, когда в `backend/.env` задан `OPENROUTER_API_KEY` и доступен backend; в боте это команда `/ask <вопрос>`.

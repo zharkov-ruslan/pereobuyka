@@ -14,6 +14,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+from pereobuyka.bot.handlers.ask import ConsultationStates
+from pereobuyka.bot.keyboards import main_menu_reply
 from pereobuyka.client.backend import (
     BackendClient,
     BackendError,
@@ -134,37 +136,47 @@ def _slot_keyboard(slots: list[SlotWindow]) -> InlineKeyboardMarkup:
 # ── Построение роутера ───────────────────────────────────────────────────────
 
 
+async def start_booking(message: Message, state: FSMContext, backend: BackendClient) -> None:
+    prev_state = await state.get_state()
+    await state.clear()
+    try:
+        services = await backend.get_services()
+    except (BackendUnavailableError, BackendError):
+        await message.answer("Сервис временно недоступен. Попробуйте позже.")
+        return
+
+    if not services:
+        await message.answer("Каталог услуг пуст, запись недоступна.")
+        return
+
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text=f"{s['name']} — {s['price']} ₽",
+                callback_data=ServiceCb(service_id=str(s["id"])).pack(),
+            )
+        ]
+        for s in services
+    ]
+    buttons.append([InlineKeyboardButton(text="Отмена", callback_data=CancelCb().pack())])
+    await state.set_state(BookStates.choosing_service)
+    await message.answer(
+        "Выберите услугу:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+    )
+    if prev_state == ConsultationStates.chatting:
+        await message.answer(
+            "⬆ Нажмите кнопку с услугой в сообщении выше. Снизу — обычное меню (в т.ч. «Вопрос консультанту»).",
+            reply_markup=main_menu_reply(in_consultation=False),
+        )
+
+
 def build_router(backend: BackendClient) -> Router:
     router = Router()
 
     @router.message(Command("book"))
     async def cmd_book(message: Message, state: FSMContext) -> None:
-        await state.clear()
-        try:
-            services = await backend.get_services()
-        except (BackendUnavailableError, BackendError):
-            await message.answer("Сервис временно недоступен. Попробуйте позже.")
-            return
-
-        if not services:
-            await message.answer("Каталог услуг пуст, запись недоступна.")
-            return
-
-        buttons = [
-            [
-                InlineKeyboardButton(
-                    text=f"{s['name']} — {s['price']} ₽",
-                    callback_data=ServiceCb(service_id=str(s["id"])).pack(),
-                )
-            ]
-            for s in services
-        ]
-        buttons.append([InlineKeyboardButton(text="Отмена", callback_data=CancelCb().pack())])
-        await state.set_state(BookStates.choosing_service)
-        await message.answer(
-            "Выберите услугу:",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
-        )
+        await start_booking(message, state, backend)
 
     @router.callback_query(BookStates.choosing_service, ServiceCb.filter())
     async def on_service_chosen(callback: CallbackQuery, callback_data: ServiceCb, state: FSMContext) -> None:

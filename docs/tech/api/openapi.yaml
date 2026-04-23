@@ -1492,6 +1492,24 @@ components:
       properties:
         message:
           type: string
+          maxLength: 4000
+        history:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/ConsultationHistoryItem"
+          description: Предыдущие реплики user/assistant (для связного диалога в /ask)
+
+    ConsultationHistoryItem:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+          maxLength: 4000
 
     ConsultationResponse:
       type: object

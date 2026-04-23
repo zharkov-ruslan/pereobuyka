@@ -13,28 +13,32 @@ from pereobuyka.client.backend import BackendClient, BackendError, BackendUnavai
 logger = logging.getLogger(__name__)
 
 
+async def run_services_list(message: Message, backend: BackendClient) -> None:
+    try:
+        services = await backend.get_services()
+    except BackendUnavailableError:
+        await message.answer("Сервис временно недоступен. Попробуйте позже.")
+        return
+    except BackendError as exc:
+        logger.error("Backend error in /services: %s", exc)
+        await message.answer("Не удалось получить список услуг. Попробуйте позже.")
+        return
+
+    if not services:
+        await message.answer("Каталог услуг пока пуст.")
+        return
+
+    lines = ["Услуги:\n"]
+    for s in services:
+        lines.append(f"• {s['name']} — {s['price']} ₽, {s['duration_minutes']} мин")
+    await message.answer("\n".join(lines))
+
+
 def build_router(backend: BackendClient) -> Router:
     router = Router()
 
     @router.message(Command("services"))
     async def cmd_services(message: Message) -> None:
-        try:
-            services = await backend.get_services()
-        except BackendUnavailableError:
-            await message.answer("Сервис временно недоступен. Попробуйте позже.")
-            return
-        except BackendError as exc:
-            logger.error("Backend error in /services: %s", exc)
-            await message.answer("Не удалось получить список услуг. Попробуйте позже.")
-            return
-
-        if not services:
-            await message.answer("Каталог услуг пока пуст.")
-            return
-
-        lines = ["Услуги:\n"]
-        for s in services:
-            lines.append(f"• {s['name']} — {s['price']} ₽, {s['duration_minutes']} мин")
-        await message.answer("\n".join(lines))
+        await run_services_list(message, backend)
 
     return router

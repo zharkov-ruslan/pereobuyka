@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_model: str = "openai/gpt-4o-mini"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    # Один «раунд» OpenRouter; медленные модели — увеличьте (см. таймаут бота CONSULTATION_REQUEST_TIMEOUT)
+    consultation_llm_timeout_seconds: float = 90.0
+    consultation_max_tool_rounds: int = 6
+    consultation_system_prompt: str = ""
+    # IANA, напр. Europe/Moscow: «сегодня» в consultation и отсечение прошедших слотов
+    consultation_business_timezone: str = "Europe/Moscow"
 
     # Секрет для авторизации бота (временная мера до реализации JWT auth)
     bot_secret: str = ""

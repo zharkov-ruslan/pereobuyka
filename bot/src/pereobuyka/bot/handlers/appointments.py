@@ -29,48 +29,52 @@ def _format_time(raw_iso: str) -> str:
     return value.astimezone(UTC).strftime("%Y-%m-%d %H:%M")
 
 
+async def run_appointments_list(message: Message, backend: BackendClient) -> None:
+    if message.from_user is None:
+        return
+    user_client = backend.for_user(message.from_user.id)
+    try:
+        appointments = await user_client.list_my_appointments(status="scheduled", limit=10)
+    except BackendUnavailableError:
+        await message.answer("Сервис временно недоступен. Попробуйте позже.")
+        return
+    except BackendError as exc:
+        logger.error("Backend error in /appointments: %s", exc)
+        await message.answer("Не удалось получить записи. Попробуйте позже.")
+        return
+
+    if not appointments:
+        await message.answer("У вас нет активных записей.")
+        return
+
+    lines = ["Ваши активные записи:\n"]
+    buttons: list[list[InlineKeyboardButton]] = []
+    for item in appointments:
+        appointment_id = str(item.get("id", ""))
+        starts_at = _format_time(str(item.get("starts_at", "")))
+        ends_at = _format_time(str(item.get("ends_at", "")))
+        lines.append(f"• {starts_at} - {ends_at}, статус: {item.get('status')}")
+        if appointment_id:
+            buttons.append(
+                [
+                    InlineKeyboardButton(
+                        text=f"Отменить {starts_at}",
+                        callback_data=CancelAppointmentCb(appointment_id=appointment_id).pack(),
+                    )
+                ]
+            )
+    await message.answer(
+        "\n".join(lines),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons) if buttons else None,
+    )
+
+
 def build_router(backend: BackendClient) -> Router:
     router = Router()
 
     @router.message(Command("appointments"))
     async def cmd_appointments(message: Message) -> None:
-        if message.from_user is None:
-            return
-        user_client = backend.for_user(message.from_user.id)
-        try:
-            appointments = await user_client.list_my_appointments(status="scheduled", limit=10)
-        except BackendUnavailableError:
-            await message.answer("Сервис временно недоступен. Попробуйте позже.")
-            return
-        except BackendError as exc:
-            logger.error("Backend error in /appointments: %s", exc)
-            await message.answer("Не удалось получить записи. Попробуйте позже.")
-            return
-
-        if not appointments:
-            await message.answer("У вас нет активных записей.")
-            return
-
-        lines = ["Ваши активные записи:\n"]
-        buttons: list[list[InlineKeyboardButton]] = []
-        for item in appointments:
-            appointment_id = str(item.get("id", ""))
-            starts_at = _format_time(str(item.get("starts_at", "")))
-            ends_at = _format_time(str(item.get("ends_at", "")))
-            lines.append(f"• {starts_at} - {ends_at}, статус: {item.get('status')}")
-            if appointment_id:
-                buttons.append(
-                    [
-                        InlineKeyboardButton(
-                            text=f"Отменить {starts_at}",
-                            callback_data=CancelAppointmentCb(appointment_id=appointment_id).pack(),
-                        )
-                    ]
-                )
-        await message.answer(
-            "\n".join(lines),
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons) if buttons else None,
-        )
+        await run_appointments_list(message, backend)
 
     @router.callback_query(CancelAppointmentCb.filter())
     async def on_cancel_appointment(callback: CallbackQuery, callback_data: CancelAppointmentCb) -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date
-from typing import Any, NotRequired, TypedDict, cast
+from typing import Any, Literal, NotRequired, TypedDict, cast
 from uuid import UUID
 
 import httpx
@@ -56,6 +56,16 @@ class MeResponse(TypedDict):
     telegram_id: NotRequired[int | None]
 
 
+class ConsultationHistoryItem(TypedDict):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ConsultationResponse(TypedDict):
+    reply: str
+    request_id: NotRequired[str | None]
+
+
 class TelegramAuthResponse(TypedDict):
     access_token: str
     token_type: str
@@ -86,9 +96,10 @@ class BackendClient:
     Используйте :meth:`for_user` для запросов, требующих авторизации.
     """
 
-    def __init__(self, base_url: str, bot_secret: str) -> None:
+    def __init__(self, base_url: str, bot_secret: str, *, consultation_read_timeout: float = 300.0) -> None:
         self._base_url = base_url.rstrip("/")
         self._bot_secret = bot_secret
+        self._consultation_read_timeout = max(30.0, float(consultation_read_timeout))
         self._http = httpx.AsyncClient(timeout=10.0)
 
     async def close(self) -> None:
@@ -97,7 +108,13 @@ class BackendClient:
 
     def for_user(self, telegram_user_id: int) -> _UserClient:
         """Вернуть клиент с привязкой к конкретному пользователю Telegram."""
-        return _UserClient(self._http, self._base_url, self._bot_secret, telegram_user_id)
+        return _UserClient(
+            self._http,
+            self._base_url,
+            self._bot_secret,
+            telegram_user_id,
+            consultation_read_timeout=self._consultation_read_timeout,
+        )
 
     async def get_services(self) -> list[ServiceItem]:
         """Получить каталог активных услуг."""
@@ -141,10 +158,13 @@ class _UserClient:
         base_url: str,
         bot_secret: str,
         telegram_user_id: int,
+        *,
+        consultation_read_timeout: float = 300.0,
     ) -> None:
         self._http = http
         self._base_url = base_url
         self._headers = _user_auth_headers(bot_secret, telegram_user_id)
+        self._consultation_read_timeout = consultation_read_timeout
 
     async def get_slots(
         self,
@@ -268,6 +288,31 @@ class _UserClient:
             list[VisitItem],
             await self._get_items("/api/v1/me/visits", {"limit": limit, "offset": 0}),
         )
+
+    async def send_consultation(
+        self,
+        message: str,
+        *,
+        history: list[ConsultationHistoryItem] | None = None,
+    ) -> ConsultationResponse:
+        """Отправить вопрос в LLM-консультанта backend."""
+        body: dict[str, Any] = {"message": message}
+        if history:
+            body["history"] = history
+        try:
+            # Один HTTP-вызов ждёт все раунды LLM + tools на бэке; не мешаем 60s по умолчанию.
+            read_s = self._consultation_read_timeout
+            response = await self._http.post(
+                f"{self._base_url}/api/v1/consultation/messages",
+                headers=self._headers,
+                json=body,
+                timeout=httpx.Timeout(connect=15.0, read=read_s, write=30.0, pool=10.0),
+            )
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            logger.warning("Backend unavailable: %s", exc)
+            raise BackendUnavailableError from exc
+        raw = _parse_response(response)
+        return cast(ConsultationResponse, self._ensure_object(raw))
 
     async def _get_items(self, path: str, params: dict[str, str | int]) -> list[dict[str, Any]]:
         try:

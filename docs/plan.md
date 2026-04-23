@@ -39,8 +39,8 @@
 | Этап | Название | Ценность | Статус | Основные области | Tasklist |
 |------|----------|----------|--------|------------------|----------|
 | 1 | Фундамент: backend и модель данных | Ядро системы готово к подключению каналов | ✅ done | backend, database | [tasklist-backend.md](tasks/tasklist-backend.md), [tasklist-database.md](tasks/tasklist-database.md) |
-| 2 | Telegram-бот | Первый рабочий канал для клиента | 🔄 in-progress | backend, integrations | [tasklist-02-bot.md](tasks/tasklist-02-bot.md), [tasklist-02-integrations.md](tasks/tasklist-02-integrations.md) |
-| 3 | LLM-консультант | Диалоговая консультация через бота | ⚪ planned | backend, integrations | [tasklist-03-llm.md](tasks/tasklist-03-llm.md) |
+| 2 | Telegram-бот | Первый рабочий канал для клиента | ✅ done | backend, integrations | [tasklist-02-bot.md](tasks/tasklist-02-bot.md), [tasklist-02-integrations.md](tasks/tasklist-02-integrations.md) |
+| 3 | LLM-консультант | Диалоговая консультация через бота | ✅ done | backend, integrations | [tasklist-03-llm.md](tasks/tasklist-03-llm.md) |
 | 4 | Административный веб-интерфейс | Управление прайсом, расписанием и записями без разработчика | ⚪ planned | frontend, backend | [tasklist-04-admin-web.md](tasks/tasklist-04-admin-web.md) |
 | 5 | Клиентский веб-интерфейс | Альтернативный канал: те же сценарии, что в боте | ⚪ planned | frontend, backend | [tasklist-05-client-web.md](tasks/tasklist-05-client-web.md) |
 | 6 | Production-ready и delivery | Система пригодна к эксплуатации и обслуживанию | ⚪ planned | devops | [tasklist-06-devops.md](tasks/tasklist-06-devops.md) |
@@ -143,7 +143,9 @@ LLM-консультант — ключевая дифференцирующая
 
 **Результат:** Бот отвечает на свободные вопросы клиентов об услугах и помогает с выбором записи через диалог.
 
-**Статус:** ⚪ planned
+**Статус:** ✅ done
+
+**Факт реализации:** в backend добавлены `pereobuyka/llm` (OpenRouter) и оркестратор консультации с function-calling (`list_services`, `list_slots`, `create_appointment`) поверх существующих сервисов; эндпоинт `POST /api/v1/consultation/messages` возвращает ответ и безопасные `503` при сбоях провайдера. В боте вход — команда `/ask` (вопрос уходит в backend, ключи OpenRouter настраиваются в `backend/.env`).
 
 **Активные области:** backend, integrations
 
@@ -152,7 +154,7 @@ LLM-консультант — ключевая дифференцирующая
 **Что должно появиться:**
 - В backend реализован LLM-модуль: системный промпт, формирование контекста (прайс, слоты, бонусы), вызов OpenRouter
 - Обработка ошибок LLM: таймауты, недоступность провайдера — без утечки деталей пользователю
-- Бот передаёт свободный вопрос клиента в LLM-сервис и возвращает ответ
+- Бот отправляет вопрос в backend (`/ask`) и возвращает ответ пользователю
 
 **Что можно проверить:**
 - Вопрос «сколько стоит шиномонтаж» возвращает актуальную цену из прайса, а не «придуманную»
