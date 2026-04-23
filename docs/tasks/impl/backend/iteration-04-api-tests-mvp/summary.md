@@ -1,6 +1,6 @@
-# iter-04 — API tests MVP: итоги
+# iter-04 — API tests: итоги
 
-## Что реализовано (исходный срез MVP)
+## Что реализовано (исходный базовый срез)
 
 ### Тесты (`backend/tests/`)
 - **`conftest.py`** — `client` (session-scope TestClient), `auth_override` (dependency override для `get_current_user`). *После закрытия этапа 1:* фикстура **PostgreSQL** (Testcontainers) + Alembic + seed; между тестами — `TRUNCATE` записей/визитов/бонусов; `ADMIN_API_TOKEN` для сценариев админа; `get_settings.cache_clear` при смене `DATABASE_URL`.
@@ -13,9 +13,9 @@
 
 - **`test_visit_confirm.py`** — 1 интеграционный тест: `POST /auth/telegram` → запись → `POST /admin/visits` → баланс бонусов на `GET /me/bonus-account` (только при PostgreSQL в фикстуре).
 
-### Stub-реализация MVP-endpoint'ов (iter-04)
+### Stub-реализация базовых endpoint'ов (iter-04)
 - **`api/v1/schemas.py`** — Pydantic-схемы: `AppointmentStatus(StrEnum)`, `ServiceLineItem`, `SlotWindow`, `SlotListResponse`, `AppointmentCreateRequest`, `Appointment`
-- **`api/v1/deps.py`** — заглушка `get_current_user`: без токена → 401; с токеном → далее поддержка `BOT_SECRET` и `mvp-*` (расширено в последующих итерациях)
+- **`api/v1/deps.py`** — заглушка `get_current_user`: без токена → 401; с токеном → далее поддержка `BOT_SECRET` и клиентского Bearer-токена (расширено в последующих итерациях)
 - **`storage/memory.py`** — in-memory хранилище: предзаполненная услуга `DEFAULT_SERVICE_ID` (60 мин, 2000 руб.), расписание Пн–Пт 09:00–18:00, функции `get_services()` / `get_appointments()` / `add_appointment()` / `reset_appointments()`
 - **`services/slot_service.py`** — `get_free_slots()`: итерация по дням → генерация окон с шагом 30 мин → фильтрация занятых
 - **`services/appointment_service.py`** — `create_appointment()`: валидация услуг → расчёт длительности и цены → проверка конфликта → сохранение
@@ -29,7 +29,7 @@
 ruff: All checks passed!
 ```
 
-*Ранее исходный MVP-only прогон без контейнера был короче (порядка 12–13 тестов без PG-фикстуры).*
+*Ранее исходный прогон базового среза без контейнера был короче (порядка 12–13 тестов без PG-фикстуры).*
 
 ## Отклонения от плана
 

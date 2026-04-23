@@ -194,7 +194,7 @@ journey
 | Зависимости | **uv** — `pyproject.toml` + lock-файл |
 | Backend-фреймворк | **FastAPI** (ASGI); валидация и схемы — **Pydantic**; OpenAPI из кода (см. [ADR-002](tech/adr/adr-002-backend-framework.md)) |
 | ORM / доступ к БД | **SQLAlchemy 2.x** (async), драйвер **asyncpg**; миграции — **Alembic** ([ADR-003](tech/adr/adr-003-orm.md), workflow [ADR-004](tech/adr/adr-004-database-migrations-workflow.md); справка [database-migrations.md](tech/database-migrations.md)) |
-| Telegram | **aiogram** 3.x, long polling (MVP); webhook при выделении HTTP-сервера |
+| Telegram | **aiogram** 3.x, long polling; webhook при выделении HTTP-сервера |
 | LLM-клиент | **openai** SDK (OpenRouter как провайдер) |
 | БД | SQLite (только локальная разработка) → **PostgreSQL с первого деплоя** |
 | Frontend | Определяется при старте web-фазы |
@@ -275,6 +275,6 @@ journey
 | Вопрос | Статус |
 |--------|--------|
 | Frontend-стек (React / Vue / другой) | Определяется при старте web-фазы |
-| Webhook vs. long polling для бота | Long polling на MVP; webhook при выделении сервера |
+| Webhook vs. long polling для бота | Long polling в текущей версии; webhook при выделении сервера |
 | Монорепо vs. отдельные репозитории | Монорепо до явной потребности в разделении |
 | Деплой и инфраструктура | Вне текущего scope |

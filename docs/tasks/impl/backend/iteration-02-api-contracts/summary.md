@@ -16,4 +16,4 @@
 ## Следующие шаги
 
 - iter-03: каркас FastAPI; `docs/tech/api/openapi.yaml` — эталон контракта.
-- iter-05: реализация endpoint’ов по волнам (MVP → полный срез этапа 1 для PostgreSQL; см. [`tasklist-backend.md`](../../../tasklist-backend.md) iter-05).
+- iter-05: реализация endpoint’ов по волнам (базовый срез → полный срез этапа 1 для PostgreSQL; см. [`tasklist-backend.md`](../../../tasklist-backend.md) iter-05).

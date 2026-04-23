@@ -9,7 +9,6 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from pereobuyka.bot.router import build_root_router
 from pereobuyka.client.backend import BackendClient
 from pereobuyka.config import load_config
-from pereobuyka.services.user_service import UserService
 
 
 def _setup_logging(level: str) -> None:
@@ -26,10 +25,9 @@ async def _run() -> None:
     bot = Bot(token=config.telegram_bot_token)
     dp = Dispatcher(storage=MemoryStorage())
 
-    user_service = UserService()
     backend = BackendClient(config.backend_base_url, config.bot_secret)
 
-    dp.include_router(build_root_router(user_service=user_service, backend=backend))
+    dp.include_router(build_root_router(backend=backend))
 
     try:
         await dp.start_polling(bot)

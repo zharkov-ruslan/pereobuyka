@@ -12,7 +12,7 @@
 
 ## Режимы `DATABASE_URL`
 
-| URL | Поведение MVP-маршрутов |
+| URL | Поведение базовых маршрутов |
 |-----|-------------------------|
 | `postgresql+asyncpg://…` | Данные из PostgreSQL |
 | `sqlite+aiosqlite://…` | In-memory [`memory.py`](../../../../../backend/src/pereobuyka/storage/memory.py) |

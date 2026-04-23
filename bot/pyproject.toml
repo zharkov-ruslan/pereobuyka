@@ -15,22 +15,17 @@ dependencies = [
 pereobuyka = "pereobuyka.main:main"
 
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.8.0,<0.9.0"]
+build-backend = "uv_build"
 
 [tool.uv]
 package = true
-
-[tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.setuptools.packages.find]
-where = ["src"]
 
 [dependency-groups]
 dev = [
   "mypy>=1.20.1",
   "ruff>=0.5.0",
+  "ty>=0.0.1a16",
 ]
 
 # Стиль: см. .agents/skills/python-code-style — ruff как единый линтер/форматтер
@@ -57,3 +52,6 @@ disallow_incomplete_defs = true
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
+
+[tool.ty.environment]
+python-version = "3.12"

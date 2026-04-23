@@ -27,7 +27,7 @@
 ### API и контракты
 
 - Держать **матрицу кодов ошибок** в sync с [`docs/tech/api/errors.md`](tech/api/errors.md) и фактическими `HTTPException` в коде.
-- В OpenAPI явно описать **две схемы авторизации**: клиентский Bearer (`mvp-` / `BOT_SECRET`) и админский (`ADMIN_API_TOKEN`).
+- В OpenAPI явно описать **две схемы авторизации**: клиентский Bearer (`BOT_SECRET` и пользовательский токен после auth) и админский (`ADMIN_API_TOKEN`).
 
 ### Прочее
 

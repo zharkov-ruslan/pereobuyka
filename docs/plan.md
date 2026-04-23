@@ -39,7 +39,7 @@
 | Этап | Название | Ценность | Статус | Основные области | Tasklist |
 |------|----------|----------|--------|------------------|----------|
 | 1 | Фундамент: backend и модель данных | Ядро системы готово к подключению каналов | ✅ done | backend, database | [tasklist-backend.md](tasks/tasklist-backend.md), [tasklist-database.md](tasks/tasklist-database.md) |
-| 2 | Telegram-бот MVP | Первый рабочий канал для клиента | 🔄 in-progress | backend, integrations | [tasklist-02-bot.md](tasks/tasklist-02-bot.md), [tasklist-02-integrations.md](tasks/tasklist-02-integrations.md) |
+| 2 | Telegram-бот | Первый рабочий канал для клиента | 🔄 in-progress | backend, integrations | [tasklist-02-bot.md](tasks/tasklist-02-bot.md), [tasklist-02-integrations.md](tasks/tasklist-02-integrations.md) |
 | 3 | LLM-консультант | Диалоговая консультация через бота | ⚪ planned | backend, integrations | [tasklist-03-llm.md](tasks/tasklist-03-llm.md) |
 | 4 | Административный веб-интерфейс | Управление прайсом, расписанием и записями без разработчика | ⚪ planned | frontend, backend | [tasklist-04-admin-web.md](tasks/tasklist-04-admin-web.md) |
 | 5 | Клиентский веб-интерфейс | Альтернативный канал: те же сценарии, что в боте | ⚪ planned | frontend, backend | [tasklist-05-client-web.md](tasks/tasklist-05-client-web.md) |
@@ -62,7 +62,7 @@
 
 **Статус:** ✅ done
 
-**Факт реализации:** по [tasklist-backend.md](tasks/tasklist-backend.md) выполнены итерации **iter-01–iter-07**; по контракту OpenAPI реализованы маршруты **клиента и администратора** (в т.ч. auth Telegram, записи, визиты, лояльность, CRUD услуг и расписания, подтверждение визита и бонусы). Режим **PostgreSQL** — полный набор; без БД (SQLite) остаются только ранние MVP-эндпоинты каталога/слотов/записи.
+**Факт реализации:** по [tasklist-backend.md](tasks/tasklist-backend.md) выполнены итерации **iter-01–iter-07**; по контракту OpenAPI реализованы маршруты **клиента и администратора** (в т.ч. auth Telegram, записи, визиты, лояльность, CRUD услуг и расписания, подтверждение визита и бонусы). Режим **PostgreSQL** — полный набор; без БД (SQLite) остаются только ранние базовые эндпоинты каталога/слотов/записи.
 
 По [tasklist-database.md](tasks/tasklist-database.md) **область database закрыта** (**iter-db-01–iter-db-05**): миграции Alembic, seed (включая пользователя-админа для `ADMIN_ACTOR_USER_ID`), ORM и интеграционные тесты с Testcontainers.
 
@@ -97,7 +97,7 @@
 
 ---
 
-### Этап 2 — Telegram-бот MVP
+### Этап 2 — Telegram-бот
 
 **Цель:** Подключить первый клиентский канал — Telegram-бот, реализующий базовые сценарии: регистрацию, просмотр прайса, запись, историю визитов, баланс бонусов.
 
@@ -106,13 +106,13 @@
 
 **Результат:** Работающий Telegram-бот, подключённый к backend: клиент может зарегистрироваться, посмотреть прайс, записаться и узнать баланс бонусов.
 
-**Статус:** 🔄 in-progress
+**Статус:** ✅ done
 
-**Факт реализации (на текущий момент):** проект бота в [`bot/`](../bot/) (aiogram 3.x), **HTTP-клиент** к backend, сценарии **каталог услуг** (`/services`) и **запись** (`/book`, FSM) через реализованные MVP API; авторизация бота с backend — **BOT_SECRET** (временная схема). Нет отдельного tasklist-файла «бот» в `docs/tasks/` — детализация в [tasklist-backend.md](tasks/tasklist-backend.md) (iter-07). **Не реализовано** относительно целей этапа: регистрация пользователя в БД через API, просмотр/отмена списка записей, баланс бонусов и история визитов в боте, отдельные tasklist-02-* (файлы-заглушки в таблице обзора).
+**Факт реализации:** проект бота в [`bot/`](../bot/) (aiogram 3.x), **HTTP-клиент** к backend и все целевые сценарии этапа 2: регистрация (`/start` через `GET /api/v1/me` + fallback `POST /api/v1/auth/telegram`), каталог услуг (`/services`), запись (`/book`, FSM), просмотр/отмена записей (`/appointments`), бонусы (`/bonus`), история визитов (`/visits`). Временная схема авторизации бота через **BOT_SECRET** сохранена как интеграционный компромисс текущей версии. Детализация вынесена в [`tasklist-02-bot.md`](tasks/tasklist-02-bot.md) и [`tasklist-02-integrations.md`](tasks/tasklist-02-integrations.md).
 
 **Активные области:** backend, integrations
 
-**Зависимость:** API-контракты и MVP backend доступны (см. этап 1); полное завершение этапа 1 по БД/домену не блокирует текущий срез бота, но расширение сценариев опирается на дальнейшую реализацию API.
+**Зависимость:** API-контракты и backend доступны (см. этап 1); полное завершение этапа 1 по БД/домену не блокирует текущий срез бота, но расширение сценариев опирается на дальнейшую реализацию API.
 
 **Что должно появиться:**
 - Инициализирован проект бота (`bot/`, aiogram 3.x, long polling)

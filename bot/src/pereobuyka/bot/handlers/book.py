@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import contextlib
 import logging
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
+from typing import Any, Protocol
 from uuid import UUID
 
 from aiogram import F, Router
@@ -14,7 +14,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from pereobuyka.client.backend import BackendClient, BackendError, BackendUnavailableError
+from pereobuyka.client.backend import (
+    BackendClient,
+    BackendError,
+    BackendUnavailableError,
+    SlotWindow,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +62,17 @@ def _today() -> date:
     return datetime.now(tz=UTC).date()
 
 
+def _filter_upcoming_slots(slots: list[SlotWindow], day: date) -> list[SlotWindow]:
+    """Окна, которые ещё не начались: для сегодняшнего дня — только с start строго после «сейчас» (UTC)."""
+    tday = _today()
+    if day < tday:
+        return []
+    if day > tday:
+        return list(slots)
+    now = datetime.now(tz=UTC)
+    return [s for s in slots if _parse_api_datetime(str(s["starts_at"])) > now]
+
+
 def _parse_api_datetime(iso: str) -> datetime:
     """Разбор datetime из ответа API (naive считаем UTC)."""
     raw = iso.replace("Z", "+00:00")
@@ -71,21 +87,27 @@ def _starts_at_iso_for_api(start_ts: int) -> str:
     return datetime.fromtimestamp(start_ts, tz=UTC).strftime("%Y-%m-%dT%H:%M:%S")
 
 
-def _date_keyboard() -> InlineKeyboardMarkup:
-    today = _today()
-    days = [
-        (today, "Сегодня"),
-        (today.replace(day=today.day + 1), "Завтра"),
-    ]
-    with contextlib.suppress(ValueError):
-        days.append((today.replace(day=today.day + 2), "Послезавтра"))
-
+def _date_keyboard(*, include_today: bool = True) -> InlineKeyboardMarkup:
+    t = _today()
+    if include_today:
+        days: list[tuple[date, str]] = [
+            (t, "Сегодня"),
+            (t + timedelta(days=1), "Завтра"),
+            (t + timedelta(days=2), "Послезавтра"),
+        ]
+    else:
+        d3 = t + timedelta(days=3)
+        days = [
+            (t + timedelta(days=1), "Завтра"),
+            (t + timedelta(days=2), "Послезавтра"),
+            (d3, d3.strftime("%d.%m")),
+        ]
     buttons = [[InlineKeyboardButton(text=label, callback_data=DateCb(iso_date=str(d)).pack())] for d, label in days]
     buttons.append([InlineKeyboardButton(text="Отмена", callback_data=CancelCb().pack())])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def _slot_keyboard(slots: list[dict]) -> InlineKeyboardMarkup:
+def _slot_keyboard(slots: list[SlotWindow]) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     row: list[InlineKeyboardButton] = []
     for slot in slots:
@@ -155,16 +177,26 @@ def build_router(backend: BackendClient) -> Router:
         if service is None:
             await callback.answer("Услуга не найдена. Начните снова с /book.", show_alert=True)
             return
+        if callback.from_user is None:
+            await callback.answer("Не удалось определить пользователя.")
+            return
         service_name = str(service["name"])
         await state.update_data(
             service_id=callback_data.service_id,
             service_name=service_name,
             duration=int(service["duration_minutes"]),
         )
+        include_today = True
+        user_client = backend.for_user(callback.from_user.id)
+        try:
+            day_slots = await user_client.get_slots(_today(), _today(), [UUID(callback_data.service_id)])
+            include_today = bool(_filter_upcoming_slots(day_slots, _today()))
+        except (BackendUnavailableError, BackendError):
+            pass
         await state.set_state(BookStates.entering_date)
         await callback.message.edit_text(  # type: ignore[union-attr]
             f"Услуга: {service_name}\n\nВыберите дату:",
-            reply_markup=_date_keyboard(),
+            reply_markup=_date_keyboard(include_today=include_today),
         )
         await callback.answer()
 
@@ -197,11 +229,19 @@ def build_router(backend: BackendClient) -> Router:
             await callback.answer()
             return
 
-        if not slots:
-            await callback.message.edit_text(  # type: ignore[union-attr]
-                f"На {callback_data.iso_date} свободных окон нет. Выберите другую дату:",
-                reply_markup=_date_keyboard(),
-            )
+        upcoming = _filter_upcoming_slots(slots, chosen_date)
+        tday = _today()
+        if not upcoming:
+            if chosen_date == tday and slots:
+                await callback.message.edit_text(  # type: ignore[union-attr]
+                    "Запись на сегодня невозможна: на оставшееся время нет свободных окон. Выберите другую дату:",
+                    reply_markup=_date_keyboard(include_today=False),
+                )
+            else:
+                await callback.message.edit_text(  # type: ignore[union-attr]
+                    f"На {callback_data.iso_date} свободных окон нет. Выберите другую дату:",
+                    reply_markup=_date_keyboard(),
+                )
             await callback.answer()
             return
 
@@ -209,7 +249,7 @@ def build_router(backend: BackendClient) -> Router:
         await state.set_state(BookStates.choosing_slot)
         await callback.message.edit_text(  # type: ignore[union-attr]
             f"Доступные окна на {callback_data.iso_date}:",
-            reply_markup=_slot_keyboard(slots),
+            reply_markup=_slot_keyboard(upcoming),
         )
         await callback.answer()
 
@@ -285,14 +325,18 @@ def build_router(backend: BackendClient) -> Router:
     return router
 
 
-async def _refetch_slots(user_client: object, fsm_data: dict, service_id: str) -> list[dict]:
-    """Повторно запросить слоты при конфликте 409."""
-    from pereobuyka.client.backend import _UserClient  # noqa: PLC0415
+class _SlotsClientProtocol(Protocol):
+    async def get_slots(self, date_from: date, date_to: date, service_ids: list[UUID]) -> list[SlotWindow]:
+        """Return slot list from backend."""
 
-    if not isinstance(user_client, _UserClient):
-        return []
+
+async def _refetch_slots(
+    user_client: _SlotsClientProtocol, fsm_data: dict[str, Any], service_id: str
+) -> list[SlotWindow]:
+    """Повторно запросить слоты при конфликте 409."""
     try:
         chosen_date = date.fromisoformat(fsm_data.get("chosen_date", str(_today())))
-        return await user_client.get_slots(chosen_date, chosen_date, [UUID(service_id)])
+        raw = await user_client.get_slots(chosen_date, chosen_date, [UUID(service_id)])
+        return _filter_upcoming_slots(raw, chosen_date)
     except BackendError:
         return []

@@ -1,8 +1,8 @@
 # iter-05 — Impl endpoints: итоги
 
-Итерация в два слоя: **(A)** формализация MVP и каталог услуг; **(B)** закрытие этапа 1 по backend — полный набор маршрутов для PostgreSQL, репозитории и сервисы (см. [`tasklist-backend.md`](../../../tasklist-backend.md), раздел iter-05).
+Итерация в два слоя: **(A)** формализация базового среза и каталог услуг; **(B)** закрытие этапа 1 по backend — полный набор маршрутов для PostgreSQL, репозитории и сервисы (см. [`tasklist-backend.md`](../../../tasklist-backend.md), раздел iter-05).
 
-## A. MVP-волна (исходный scope плана)
+## A. Базовая волна (исходный scope плана)
 
 ### Формализация временного слоя хранилища
 
@@ -30,10 +30,10 @@ In-memory зафиксирован как явный временный слой
 - **Роутинг:** `api/v1/router.py` (каталог, слоты, запись) + подключение [`routes_extended.py`](../../../../../backend/src/pereobuyka/api/v1/routes_extended.py); маршруты разнесены по [`api/v1/endpoints/`](../../../../../backend/src/pereobuyka/api/v1/endpoints/) (`auth`, `client`, `admin`, `consultation`, `common`).
 - **Репозитории:** [`storage/repositories/postgres.py`](../../../../../backend/src/pereobuyka/storage/repositories/postgres.py) (`PostgresAppointmentRepository`, `PostgresServiceRepository`, `PostgresScheduleRepository` и связанная логика); слой [`postgres_repos.py`](../../../../../backend/src/pereobuyka/storage/postgres_repos.py) там, где он используется каркасом.
 - **Сервисы:** подтверждение визита и бонусы — [`visit_commands.py`](../../../../../backend/src/pereobuyka/services/visit_commands.py); регистрация/пользователь в PG — [`auth_user_pg.py`](../../../../../backend/src/pereobuyka/services/auth_user_pg.py); маппинг ORM ↔ API — [`api_adapters.py`](../../../../../backend/src/pereobuyka/services/api_adapters.py).
-- **Авторизация:** `deps.py` / [`deps_extra.py`](../../../../../backend/src/pereobuyka/api/v1/deps_extra.py) — Bearer `mvp-<uuid>` после auth, `BOT_SECRET` + `X-Telegram-User-Id`, админ — `ADMIN_API_TOKEN` и актёр админа из seed.
+- **Авторизация:** `deps.py` / [`deps_extra.py`](../../../../../backend/src/pereobuyka/api/v1/deps_extra.py) — клиентский Bearer-токен после auth, `BOT_SECRET` + `X-Telegram-User-Id`, админ — `ADMIN_API_TOKEN` и актёр админа из seed.
 - **Seed:** пользователь-админ под `ADMIN_ACTOR_USER_ID` в [`scripts/seed.py`](../../../../../backend/src/pereobuyka/scripts/seed.py); переменные окружения — в [`backend/.env.example`](../../../../../backend/.env.example).
 
-In-memory/SQLite остаётся для раннего MVP (каталог/слоты/запись без полного набора); полный контракт — при `DATABASE_URL` на PostgreSQL.
+In-memory/SQLite остаётся для раннего базового среза (каталог/слоты/запись без полного набора); полный контракт — при `DATABASE_URL` на PostgreSQL.
 
 ## Итог прогона
 
@@ -42,7 +42,7 @@ In-memory/SQLite остаётся для раннего MVP (каталог/сл
 make backend-lint → All checks passed!
 ```
 
-(В исходной MVP-only волне было меньше тестов и короче время без PG-фикстуры.)
+(В исходной базовой волне было меньше тестов и короче время без PG-фикстуры.)
 
 ## Отклонения от исходного `plan.md`
 
@@ -63,4 +63,4 @@ make backend-lint → All checks passed!
 - [`backend/src/pereobuyka/storage/repositories/`](../../../../../backend/src/pereobuyka/storage/repositories/)
 - [`backend/src/pereobuyka/services/visit_commands.py`](../../../../../backend/src/pereobuyka/services/visit_commands.py)
 - [`backend/tests/test_services.py`](../../../../../backend/tests/test_services.py)
-- MVP-слой: [`services/appointment_service.py`](../../../../../backend/src/pereobuyka/services/appointment_service.py), [`services/slot_service.py`](../../../../../backend/src/pereobuyka/services/slot_service.py), [`storage/memory.py`](../../../../../backend/src/pereobuyka/storage/memory.py)
+- Базовый слой: [`services/appointment_service.py`](../../../../../backend/src/pereobuyka/services/appointment_service.py), [`services/slot_service.py`](../../../../../backend/src/pereobuyka/services/slot_service.py), [`storage/memory.py`](../../../../../backend/src/pereobuyka/storage/memory.py)

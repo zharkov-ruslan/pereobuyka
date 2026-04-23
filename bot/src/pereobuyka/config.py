@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from pereobuyka.llm.system_prompt import DEFAULT_SYSTEM_PROMPT
 
-# Каталог проекта бота (…/bot/), независимо от CWD — чтобы подхватывался bot/.env
+# Каталог проекта бота (…/bot/) при запуске из исходников.
 _BOT_PROJECT_DIR = Path(__file__).resolve().parents[2]
 
 
@@ -49,7 +49,10 @@ class AppConfig:
 
 def load_config() -> AppConfig:
     # Local development convenience: load variables from `.env` if present.
+    # При запуске как установленного пакета __file__ может указывать в uv-cache,
+    # поэтому сначала пробуем cwd/.env, затем путь проекта из исходников.
     # Secrets should NOT be committed; see `.env.example`.
+    load_dotenv(Path.cwd() / ".env", override=False)
     load_dotenv(_BOT_PROJECT_DIR / ".env", override=False)
 
     return AppConfig(

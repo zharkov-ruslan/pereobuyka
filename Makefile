@@ -1,4 +1,4 @@
-.PHONY: install run backend-install backend-run backend-stop backend-test backend-lint bot-install bot-run bot-lint
+.PHONY: install run backend-install backend-run backend-stop backend-test backend-lint bot-install bot-run bot-stop bot-lint
 .PHONY: db-up db-down db-reset db-migrate db-seed db-psql
 
 # Удобные алиасы для бота (корневого pyproject больше нет)
@@ -29,7 +29,10 @@ bot-install:
 	cd bot && uv sync
 
 bot-run:
-	cd bot && uv run python -m pereobuyka.main
+	cd bot && uv run python run_bot.py
+
+bot-stop:
+	-powershell -NoProfile -Command '$$ErrorActionPreference = "SilentlyContinue"; $$pids = Get-CimInstance Win32_Process | Where-Object { $$_.CommandLine -match "run_bot\.py|pereobuyka\.main|make bot-run" } | Select-Object -ExpandProperty ProcessId -Unique; foreach ($$procId in $$pids) { Stop-Process -Id $$procId -Force }; exit 0'
 
 bot-lint:
 	cd bot && uv run --group dev ruff check src/ && uv run --group dev ruff format --check src/ && uv run --group dev mypy src/pereobuyka

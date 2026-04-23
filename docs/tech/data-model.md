@@ -170,7 +170,7 @@ erDiagram
 |-------|----------|
 | User → Appointment | Один клиент — много записей |
 | Appointment ↔ Service | Через appointment_services с quantity |
-| Appointment → Visit | Не более одного визита на запись (MVP) |
+| Appointment → Visit | Не более одного визита на запись |
 | Visit ↔ Service | Через visit_lines; может отличаться от записи |
 | User → BonusAccount | Один счёт на клиента |
 | BonusAccount → BonusTransaction | История движений |

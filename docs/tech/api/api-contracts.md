@@ -1288,7 +1288,7 @@ Authorization: Bearer <JWT>
 
 ## Что намеренно вне публичного API
 
-Уведомления в Telegram после событий описаны в [integrations.md](../integrations.md) как канал доставки, не как отдельные REST-ресурсы в MVP.
+Уведомления в Telegram после событий описаны в [integrations.md](../integrations.md) как канал доставки, не как отдельные REST-ресурсы.
 
 ---
 
