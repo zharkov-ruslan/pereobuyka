@@ -11,6 +11,7 @@
 
 - Python **3.12+**
 - Установленный **uv**
+- Для локальной PostgreSQL (миграции, seed): **Docker** и **GNU Make** — см. раздел «База данных» в [backend/README.md](backend/README.md) (`make db-up`, `make db-migrate`, …).
 
 ## Где взять токены и ключи
 

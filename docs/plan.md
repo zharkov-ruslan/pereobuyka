@@ -38,7 +38,7 @@
 
 | Этап | Название | Ценность | Статус | Основные области | Tasklist |
 |------|----------|----------|--------|------------------|----------|
-| 1 | Фундамент: backend и модель данных | Ядро системы готово к подключению каналов | 🔄 in-progress | backend, database | [tasklist-backend.md](tasks/tasklist-backend.md), [tasklist-database.md](tasks/tasklist-database.md) |
+| 1 | Фундамент: backend и модель данных | Ядро системы готово к подключению каналов | ✅ done | backend, database | [tasklist-backend.md](tasks/tasklist-backend.md), [tasklist-database.md](tasks/tasklist-database.md) |
 | 2 | Telegram-бот MVP | Первый рабочий канал для клиента | 🔄 in-progress | backend, integrations | [tasklist-02-bot.md](tasks/tasklist-02-bot.md), [tasklist-02-integrations.md](tasks/tasklist-02-integrations.md) |
 | 3 | LLM-консультант | Диалоговая консультация через бота | ⚪ planned | backend, integrations | [tasklist-03-llm.md](tasks/tasklist-03-llm.md) |
 | 4 | Административный веб-интерфейс | Управление прайсом, расписанием и записями без разработчика | ⚪ planned | frontend, backend | [tasklist-04-admin-web.md](tasks/tasklist-04-admin-web.md) |
@@ -60,11 +60,13 @@
 
 **Результат:** Запущенный backend с REST API, миграциями БД, базовым набором сервисов и покрытием ключевых сценариев тестами.
 
-**Статус:** 🔄 in-progress
+**Статус:** ✅ done
 
-**Факт реализации (на текущий момент):** по [tasklist-backend.md](tasks/tasklist-backend.md) выполнены итерации **iter-01–iter-07**: стек и ADR, полный **контракт API** (OpenAPI), каркас FastAPI, **MVP-эндпоинты** (каталог услуг, слоты, создание записи), in-memory storage, автотесты API, документация backend, **бот** вызывает API по HTTP (см. этап 2). Отдельный **tasklist-database** и **персистентная БД с миграциями** в эксплуатации, а также **полная** реализация всех маршруктов и сущностей из `data-model` ещё не закрывают исходный DoD этапа — работа продолжается.
+**Факт реализации:** по [tasklist-backend.md](tasks/tasklist-backend.md) выполнены итерации **iter-01–iter-07**; по контракту OpenAPI реализованы маршруты **клиента и администратора** (в т.ч. auth Telegram, записи, визиты, лояльность, CRUD услуг и расписания, подтверждение визита и бонусы). Режим **PostgreSQL** — полный набор; без БД (SQLite) остаются только ранние MVP-эндпоинты каталога/слотов/записи.
 
-**Активные области:** backend, database
+По [tasklist-database.md](tasks/tasklist-database.md) **область database закрыта** (**iter-db-01–iter-db-05**): миграции Alembic, seed (включая пользователя-админа для `ADMIN_ACTOR_USER_ID`), ORM и интеграционные тесты с Testcontainers.
+
+**Активные области:** нет (этап 1 закрыт относительно текущего DoD в этом документе).
 
 **Что должно появиться:**
 - Инициализирован проект (`pyproject.toml`, `uv`, структура репозитория по `docs/vision.md`)
@@ -81,8 +83,13 @@
 **Выходные артефакты:**
 - `backend/` — структура проекта, сервисы, репозитории, модели
 - `Makefile` с командами запуска, миграций, тестов
-- Миграции БД
+- Миграции БД (`backend/alembic/`)
 - `docs/tasks/tasklist-backend.md`, `docs/tasks/tasklist-database.md`
+- `docs/tech/user_scenarios.md` (сценарии и данные; iter-db-01)
+- актуализация `docs/tech/data-model.md` (логика + физика + ER; iter-db-02)
+- `docs/tech/adr/adr-004-database-migrations-workflow.md`, `docs/tech/database-migrations.md` (iter-db-03)
+- `docker-compose.yml`, цели `db-*` в `Makefile`, seed-скрипт (iter-db-04)
+- `backend/src/pereobuyka/db/`, `storage/postgres_repos.py`, `storage/repositories/`, `api/v1/endpoints/`, интеграционные тесты с Testcontainers (iter-db-05; полнота API этапа 1 — см. tasklist-backend iter-05)
 
 **Связь с tasklists:**
 - [`tasklist-backend.md`](tasks/tasklist-backend.md)

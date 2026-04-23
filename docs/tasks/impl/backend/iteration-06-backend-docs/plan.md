@@ -8,7 +8,7 @@
 
 1. **`backend/README.md`** — быстрый старт: требования, установка, настройка env, запуск, OpenAPI, команды Make, тесты/линтер
 2. **`backend/.env.example`** — проверить полноту переменных и корректность комментариев
-3. **`Makefile`** — убедиться, что команды `backend-install / backend-run / backend-test / backend-lint` актуальны; добавить при необходимости
+3. **`Makefile`** — актуальность `backend-*`; для PostgreSQL миграции/seed описаны в README (`db-migrate`, `db-seed` в корневом Makefile — см. database-tasklist)
 4. **`docs/plan.md`** — проверить таблицу этапов на наличие путей вида `tasklists/` → заменить на `docs/tasks/`
 
 ## Файлы, которые будут созданы / изменены
@@ -25,7 +25,7 @@
 
 ## Критерии готовности
 
-- `backend/README.md` существует: install → env → run → `/docs` проверяется вручную
+- `backend/README.md` существует: `backend-install` → env → `backend-run` → `/docs` проверяется вручную
 - `backend/.env.example` покрывает все переменные из `config.py`
 - Makefile содержит все команды из README
 - `docs/plan.md` не содержит `tasklists/` в URL-ссылках

@@ -38,8 +38,21 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    raw = credentials.credentials
+
+    # MVP-токен после POST /auth/telegram: «mvp-<uuid пользователя>»
+    if raw.startswith("mvp-"):
+        try:
+            return UUID(raw.removeprefix("mvp-"))
+        except ValueError as e:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail={"error": {"code": "UNAUTHORIZED", "message": "Неверный формат токена"}},
+                headers={"WWW-Authenticate": "Bearer"},
+            ) from e
+
     settings = get_settings()
-    if settings.bot_secret and credentials.credentials == settings.bot_secret:
+    if settings.bot_secret and raw == settings.bot_secret:
         if x_telegram_user_id:
             return uuid.uuid5(_TELEGRAM_USER_NS, f"telegram:{x_telegram_user_id}")
         return uuid.uuid5(_TELEGRAM_USER_NS, "bot")

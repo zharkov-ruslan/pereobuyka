@@ -21,14 +21,18 @@
 - SQLAlchemy, asyncpg, alembic добавлены в зависимости уже сейчас (по ADR-003), хотя в iter-03 не используются — избегает повторной правки `pyproject.toml` в iter-05.
 - `config.py` использует `pydantic-settings` v2 (`SettingsConfigDict`); `DATABASE_URL` имеет дефолт `sqlite+aiosqlite:///./dev.db` только для dev.
 
+## Связь с tasklist
+
+Состав работ и артефакты соответствуют разделу **iter-03** в [`tasklist-backend.md`](../../../tasklist-backend.md).
+
 ## Проверка
 
 | Проверка | Результат |
 |----------|-----------|
-| `uv sync` | ✅ 38 пакетов установлено |
-| `uvicorn pereobuyka.main:app` | ✅ стартует, `Application startup complete` |
+| `make backend-install` (или `cd backend && uv sync`) | ✅ зависимости установлены |
+| `make backend-run` / `uvicorn pereobuyka.main:app` | ✅ стартует, `Application startup complete` |
 | `GET /health` | ✅ `{"status": "ok"}` |
-| `ruff check .` | ✅ `All checks passed!` |
+| `make backend-lint` / `ruff check .` | ✅ без замечаний |
 
 ## Артефакты
 

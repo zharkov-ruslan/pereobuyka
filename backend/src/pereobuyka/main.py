@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from pereobuyka.api.v1.router import router as api_v1_router
 from pereobuyka.config import get_settings
+from pereobuyka.db.session import dispose_db_engine, init_db_engine
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         level=settings.log_level.upper(),
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
+    await init_db_engine(settings.database_url)
     logger.info("Переобуйка backend starting")
     yield
+    await dispose_db_engine()
     logger.info("Переобуйка backend stopping")
 
 

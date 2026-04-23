@@ -1,60 +1,66 @@
 # iter-05 — Impl endpoints: итоги
 
-## Что реализовано
+Итерация в два слоя: **(A)** формализация MVP и каталог услуг; **(B)** закрытие этапа 1 по backend — полный набор маршрутов для PostgreSQL, репозитории и сервисы (см. [`tasklist-backend.md`](../../../tasklist-backend.md), раздел iter-05).
+
+## A. MVP-волна (исходный scope плана)
 
 ### Формализация временного слоя хранилища
 
-`tasklist-database.md` отсутствует → in-memory хранилище зафиксировано как **явный временный MVP-слой** (не «заглушка»). Комментарии вида `# iter-05: заменить на реальный storage` убраны из всех файлов; добавлена явная пометка о переходе в рамках database-tasklist.
+In-memory зафиксирован как явный временный слой до полноценной работы только через БД. Комментарии `# iter-05: заменить на реальный storage` убраны; в docstring — явная пометка о роли слоя.
 
-Затронутые файлы:
-- `storage/memory.py` — обновлён docstring
-- `services/slot_service.py` — обновлён docstring
-- `services/appointment_service.py` — обновлён docstring
+Затронутые файлы: `storage/memory.py`, `services/slot_service.py`, `services/appointment_service.py`.
 
 ### UTC-aware datetime
 
-`datetime.now()` → `datetime.now(UTC)` в `appointment_service.py`; импорт изменён на `from datetime import UTC, datetime, timedelta` (требование ruff UP017).
+`datetime.now()` → `datetime.now(UTC)` в `appointment_service.py` (ruff UP017).
 
 ### GET /api/v1/services — каталог услуг
 
-Новый публичный endpoint (сценарий **Клиент 3** из iter-02):
+- Роут: `GET /api/v1/services` (сценарий **Клиент 3** iter-02)
+- Ответ: `ServiceListResponse { items: ServiceItem[] }`; активные услуги; при полном режиме PG — также поля вроде `description` по контракту
 
-- **Роут:** `GET /api/v1/services`
-- **Ответ:** `ServiceListResponse { items: ServiceItem[] }`
-- **ServiceItem:** `id`, `name`, `duration_minutes`, `price`, `is_active`
-- Возвращает только активные услуги (`is_active == True`)
+Схемы в `api/v1/schemas.py`: `ServiceItem`, `ServiceListResponse` (и расширения под OpenAPI по мере этапа 1).
 
-Новые схемы в `api/v1/schemas.py`: `ServiceItem`, `ServiceListResponse`.
+### Тесты каталога
 
-### Тесты GET /api/v1/services
+`backend/tests/test_services.py` — 3 теста на публичный каталог.
 
-`backend/tests/test_services.py` — 3 теста:
-1. Возвращает 200 со списком, содержащим хотя бы одну услугу
-2. Элемент содержит все обязательные поля
-3. Все элементы активны (`is_active == true`)
+## B. Завершение этапа 1 (PostgreSQL)
+
+- **Роутинг:** `api/v1/router.py` (каталог, слоты, запись) + подключение [`routes_extended.py`](../../../../../backend/src/pereobuyka/api/v1/routes_extended.py); маршруты разнесены по [`api/v1/endpoints/`](../../../../../backend/src/pereobuyka/api/v1/endpoints/) (`auth`, `client`, `admin`, `consultation`, `common`).
+- **Репозитории:** [`storage/repositories/postgres.py`](../../../../../backend/src/pereobuyka/storage/repositories/postgres.py) (`PostgresAppointmentRepository`, `PostgresServiceRepository`, `PostgresScheduleRepository` и связанная логика); слой [`postgres_repos.py`](../../../../../backend/src/pereobuyka/storage/postgres_repos.py) там, где он используется каркасом.
+- **Сервисы:** подтверждение визита и бонусы — [`visit_commands.py`](../../../../../backend/src/pereobuyka/services/visit_commands.py); регистрация/пользователь в PG — [`auth_user_pg.py`](../../../../../backend/src/pereobuyka/services/auth_user_pg.py); маппинг ORM ↔ API — [`api_adapters.py`](../../../../../backend/src/pereobuyka/services/api_adapters.py).
+- **Авторизация:** `deps.py` / [`deps_extra.py`](../../../../../backend/src/pereobuyka/api/v1/deps_extra.py) — Bearer `mvp-<uuid>` после auth, `BOT_SECRET` + `X-Telegram-User-Id`, админ — `ADMIN_API_TOKEN` и актёр админа из seed.
+- **Seed:** пользователь-админ под `ADMIN_ACTOR_USER_ID` в [`scripts/seed.py`](../../../../../backend/src/pereobuyka/scripts/seed.py); переменные окружения — в [`backend/.env.example`](../../../../../backend/.env.example).
+
+In-memory/SQLite остаётся для раннего MVP (каталог/слоты/запись без полного набора); полный контракт — при `DATABASE_URL` на PostgreSQL.
 
 ## Итог прогона
 
 ```
-All checks passed!
-15 passed in 0.11s
+16 passed
+make backend-lint → All checks passed!
 ```
 
-## Отклонения от плана
+(В исходной MVP-only волне было меньше тестов и короче время без PG-фикстуры.)
 
-Нет. Реализация соответствует `plan.md`.
+## Отклонения от исходного `plan.md`
+
+Исходный `plan.md` описывал только **волну A** (формализация in-memory, UTC, `GET /services`). **Волна B** зафиксирована в [`tasklist-backend.md`](../../../tasklist-backend.md) и в дополнении к [`plan.md`](plan.md) этой итерации.
 
 ## Принятые решения
 
-- **`datetime.UTC`** вместо `timezone.utc` — требование ruff UP017 для Python 3.11+.
-- **Временный слой** явно задокументирован без привязки к номеру итерации — точка расширения видна в docstring, не в артефакте планирования.
-- **Каталог услуг** реализован как публичный endpoint (без `Depends(get_current_user)`) — соответствует vision §4 Клиент 3: просмотр прайса доступен без авторизации.
+- **`datetime.UTC`** — ruff UP017 (Python 3.11+).
+- **Каталог услуг** без обязательной авторизации — соответствует vision §4 Клиент 3.
+- **Разнесение эндпоинтов по пакету `endpoints/`** — читаемость и масштабирование при полном OpenAPI этапа 1.
 
-## Артефакты
+## Артефакты (ключевые)
 
-- [`backend/src/pereobuyka/api/v1/schemas.py`](../../../../../backend/src/pereobuyka/api/v1/schemas.py) — добавлены `ServiceItem`, `ServiceListResponse`
-- [`backend/src/pereobuyka/api/v1/router.py`](../../../../../backend/src/pereobuyka/api/v1/router.py) — добавлен `GET /services`
-- [`backend/src/pereobuyka/services/appointment_service.py`](../../../../../backend/src/pereobuyka/services/appointment_service.py) — UTC fix, обновлён docstring
-- [`backend/src/pereobuyka/services/slot_service.py`](../../../../../backend/src/pereobuyka/services/slot_service.py) — обновлён docstring
-- [`backend/src/pereobuyka/storage/memory.py`](../../../../../backend/src/pereobuyka/storage/memory.py) — обновлён docstring
-- [`backend/tests/test_services.py`](../../../../../backend/tests/test_services.py) — новый файл, 3 теста
+- [`backend/src/pereobuyka/api/v1/schemas.py`](../../../../../backend/src/pereobuyka/api/v1/schemas.py)
+- [`backend/src/pereobuyka/api/v1/router.py`](../../../../../backend/src/pereobuyka/api/v1/router.py)
+- [`backend/src/pereobuyka/api/v1/routes_extended.py`](../../../../../backend/src/pereobuyka/api/v1/routes_extended.py)
+- [`backend/src/pereobuyka/api/v1/endpoints/`](../../../../../backend/src/pereobuyka/api/v1/endpoints/)
+- [`backend/src/pereobuyka/storage/repositories/`](../../../../../backend/src/pereobuyka/storage/repositories/)
+- [`backend/src/pereobuyka/services/visit_commands.py`](../../../../../backend/src/pereobuyka/services/visit_commands.py)
+- [`backend/tests/test_services.py`](../../../../../backend/tests/test_services.py)
+- MVP-слой: [`services/appointment_service.py`](../../../../../backend/src/pereobuyka/services/appointment_service.py), [`services/slot_service.py`](../../../../../backend/src/pereobuyka/services/slot_service.py), [`storage/memory.py`](../../../../../backend/src/pereobuyka/storage/memory.py)

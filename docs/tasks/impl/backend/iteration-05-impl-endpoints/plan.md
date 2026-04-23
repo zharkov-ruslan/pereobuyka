@@ -57,3 +57,16 @@
 - `make backend-test`: все тесты зелёные (включая новые)
 - `make backend-lint`: All checks passed
 - Через `/docs` работает happy-path: слоты → запись, а также каталог услуг
+
+---
+
+## Дополнение — завершение этапа 1 (факт)
+
+Исходный план выше описывает **первую волну** (MVP + `GET /services`). По [`tasklist-backend.md`](../../../tasklist-backend.md) итерация iter-05 дополнена **полным срезом API для PostgreSQL**:
+
+- подроутеры и [`routes_extended`](../../../../../backend/src/pereobuyka/api/v1/routes_extended.py), модули [`api/v1/endpoints/`](../../../../../backend/src/pereobuyka/api/v1/endpoints/);
+- репозитории в [`storage/repositories/`](../../../../../backend/src/pereobuyka/storage/repositories/), сервисы `visit_commands`, `auth_user_pg`, [`api_adapters`](../../../../../backend/src/pereobuyka/services/api_adapters.py);
+- авторизация клиента/бота/админа (`deps`, `deps_extra`, `ADMIN_API_TOKEN`, seed админа);
+- интеграционные тесты вместе с iter-04: **16 passed** при прогоне с PostgreSQL (Testcontainers).
+
+Детали и перечень артефактов — в [`summary.md`](summary.md) (разделы A и B).

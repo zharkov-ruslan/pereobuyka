@@ -1,0 +1,22 @@
+# Локальная PostgreSQL для разработки (iter-db-04).
+# Данные в volume `pgdata`; `make db-reset` удаляет volume и все данные.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: pereobuyka
+      POSTGRES_PASSWORD: pereobuyka
+      POSTGRES_DB: pereobuyka
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pereobuyka -d pereobuyka"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  pgdata:

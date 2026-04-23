@@ -5,6 +5,7 @@
 - Добавлен контракт **OpenAPI 3.0.3** в [`docs/tech/api/openapi.yaml`](../../../../tech/api/openapi.yaml) — пути под префиксом `/api/v1`, схемы сущностей и операций для клиента, администратора и консультации (LLM).
 - Добавлено описание **ошибок** в [`docs/tech/api/errors.md`](../../../../tech/api/errors.md): обёртка `error`, HTTP-статусы, доменные коды.
 - Индекс и навигация в [`docs/tech/api/README.md`](../../../../tech/api/README.md).
+- Текстовая спецификация в [`docs/tech/api/api-contracts.md`](../../../../tech/api/api-contracts.md) — детализация эндпоинтов и соглашений поверх YAML (как в **iter-02** [`tasklist-backend.md`](../../../tasklist-backend.md)).
 
 ## Отклонения от черновых оформлений
 
@@ -15,4 +16,4 @@
 ## Следующие шаги
 
 - iter-03: каркас FastAPI; `docs/tech/api/openapi.yaml` — эталон контракта.
-- iter-05: реализация по волнам (MVP: слоты и запись).
+- iter-05: реализация endpoint’ов по волнам (MVP → полный срез этапа 1 для PostgreSQL; см. [`tasklist-backend.md`](../../../tasklist-backend.md) iter-05).

@@ -193,7 +193,7 @@ journey
 | Язык | Python 3.12+ |
 | Зависимости | **uv** — `pyproject.toml` + lock-файл |
 | Backend-фреймворк | **FastAPI** (ASGI); валидация и схемы — **Pydantic**; OpenAPI из кода (см. [ADR-002](tech/adr/adr-002-backend-framework.md)) |
-| ORM / доступ к БД | **SQLAlchemy 2.x** (async), драйвер **asyncpg**; миграции — **Alembic** (см. [ADR-003](tech/adr/adr-003-orm.md)) |
+| ORM / доступ к БД | **SQLAlchemy 2.x** (async), драйвер **asyncpg**; миграции — **Alembic** ([ADR-003](tech/adr/adr-003-orm.md), workflow [ADR-004](tech/adr/adr-004-database-migrations-workflow.md); справка [database-migrations.md](tech/database-migrations.md)) |
 | Telegram | **aiogram** 3.x, long polling (MVP); webhook при выделении HTTP-сервера |
 | LLM-клиент | **openai** SDK (OpenRouter как провайдер) |
 | БД | SQLite (только локальная разработка) → **PostgreSQL с первого деплоя** |
@@ -266,6 +266,7 @@ journey
 | [ADR-001](tech/adr/adr-001-database.md) | Выбор СУБД: PostgreSQL с первого деплоя | Accepted |
 | [ADR-002](tech/adr/adr-002-backend-framework.md) | HTTP-фреймворк backend: FastAPI | Accepted |
 | [ADR-003](tech/adr/adr-003-orm.md) | ORM и миграции: SQLAlchemy 2 async, Alembic | Accepted |
+| [ADR-004](tech/adr/adr-004-database-migrations-workflow.md) | Workflow миграций Alembic в репозитории | Accepted |
 
 ---
 

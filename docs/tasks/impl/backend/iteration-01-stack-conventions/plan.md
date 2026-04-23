@@ -6,7 +6,7 @@
 
 ## Шаги
 
-1. Сравнить FastAPI, Litestar, Django REST, Starlette (критерии: OpenAPI, async, экосистема, соответствие vision).
+1. Сравнить FastAPI, Litestar, Django REST, Starlette (критерии: OpenAPI, async, экосистема, соответствие vision; опора на `uv` и актуальную линейку Python — см. [`tasklist-backend.md`](../../../tasklist-backend.md)).
 2. Добавить `docs/tech/adr/adr-002-backend-framework.md` и строку в `docs/tech/adr/README.md`.
 3. Сравнить варианты доступа к БД (SQLAlchemy, SQLModel, Tortoise, только SQL); оформить `docs/tech/adr/adr-003-orm.md`, согласовать формулировку миграций в ADR-001.
 4. Обновить таблицу стека и реестр ADR в `docs/vision.md`; убрать backend-фреймворк из открытых вопросов.

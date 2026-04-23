@@ -52,7 +52,7 @@
 
 | Проверка | Результат |
 |----------|-----------|
-| `make backend-test` | 15 passed |
+| `make backend-test` | 16 passed |
 | `make backend-lint` | All checks passed |
 | `make bot-lint` | ruff в `bot/` |
 | Импорты бота | OK (`cd bot && uv run python -c "import pereobuyka.main"`) |

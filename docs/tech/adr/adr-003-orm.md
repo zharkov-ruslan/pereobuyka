@@ -66,3 +66,9 @@ HTTP-слой в [ADR-002](adr-002-backend-framework.md) использует **
 - Зависимости (`sqlalchemy[asyncio]`, `asyncpg`, `alembic`, при необходимости `pydantic-settings`) фиксируются в `pyproject.toml` каталога `backend/` при появлении каркаса (см. tasklist, iter-03).
 - Локальная разработка: поднятый PostgreSQL и применённые миграции — часть воспроизводимого старта; SQLite остаётся опциональным только для dev по ADR-001, без смены целевого стека ORM.
 - Тесты: при интеграционных тестах с БД — транзакции/откаты или отдельная тестовая БД; детали выносятся в реализацию, не в этот ADR.
+
+---
+
+## Связанные решения
+
+Расположение Alembic в репозитории, именование ревизий, autogenerate и политика downgrade: [ADR-004](adr-004-database-migrations-workflow.md). Практические команды: [database-migrations.md](../database-migrations.md).

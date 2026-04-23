@@ -62,6 +62,8 @@ backend/
 
 ## Makefile (корневой)
 
+**Примечание:** в корневом `Makefile` цели `install` и `run` — алиасы на **бота** (`bot-install` / `bot-run`). Для каркаса backend используются только цели с префиксом `backend-` (согласовано с таблицей проверки iter-03 в [`tasklist-backend.md`](../../../tasklist-backend.md)).
+
 Добавляются цели с префиксом `backend-`:
 
 | Цель | Команда |

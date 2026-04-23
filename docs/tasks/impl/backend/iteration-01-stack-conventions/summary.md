@@ -12,6 +12,10 @@
 
 Нет.
 
+## Связь с tasklist
+
+Критерии и артефакты совпадают с разделом **iter-01** в [`tasklist-backend.md`](../../../tasklist-backend.md) (ADR-002/003, vision, `convensions.mdc`).
+
 ## Зависимости для следующих итераций
 
 - iter-02: контракт API (схемы Pydantic / OpenAPI-описание).

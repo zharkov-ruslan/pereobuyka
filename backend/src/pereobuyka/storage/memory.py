@@ -1,7 +1,10 @@
-"""In-memory storage — временный слой хранения данных.
+"""In-memory storage — слой для локальной разработки без PostgreSQL.
 
-Используется как MVP-хранилище до появления database-tasklist
-с реализацией SQLAlchemy/PostgreSQL репозиториев.
+При ``DATABASE_URL`` на **SQLite** (значение по умолчанию в ``.env.example``)
+MVP-эндпоинты услуг, слотов и записей читают/пишут сюда.
+
+При **PostgreSQL** (``postgresql+asyncpg://…``) данные идут через SQLAlchemy
+в репозитории ``postgres_repos``; этот модуль не используется для этих маршрутов.
 """
 
 from dataclasses import dataclass, field
@@ -48,6 +51,7 @@ class ServiceRecord:
     name: str
     duration_minutes: int
     price: Decimal
+    description: str = ""
     is_active: bool = True
 
 
@@ -73,6 +77,7 @@ _SERVICES: dict[UUID, ServiceRecord] = {
         name="Замена резины",
         duration_minutes=60,
         price=Decimal("2000.00"),
+        description="Базовая услуга MVP.",
     )
 }
 

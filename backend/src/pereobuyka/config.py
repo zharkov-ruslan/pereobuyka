@@ -1,6 +1,7 @@
 """Конфигурация приложения: загрузка переменных окружения через pydantic-settings."""
 
 from functools import lru_cache
+from uuid import UUID
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -27,6 +28,11 @@ class Settings(BaseSettings):
 
     # Секрет для авторизации бота (временная мера до реализации JWT auth)
     bot_secret: str = ""
+
+    # MVP: Bearer для /api/v1/admin/*; пусто — 403
+    admin_api_token: str = ""
+    # Пользователь-админ в БД (см. seed) — confirmed_by у визитов
+    admin_actor_user_id: UUID = UUID("00000000-0000-0000-0000-0000000000aa")
 
 
 @lru_cache

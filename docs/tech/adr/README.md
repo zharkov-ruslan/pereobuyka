@@ -25,3 +25,4 @@ ADR — короткие документы, фиксирующие архите
 | [ADR-001](adr-001-database.md) | Выбор СУБД | Accepted |
 | [ADR-002](adr-002-backend-framework.md) | HTTP-фреймворк backend (FastAPI) | Accepted |
 | [ADR-003](adr-003-orm.md) | ORM и миграции (SQLAlchemy 2 async, Alembic) | Accepted |
+| [ADR-004](adr-004-database-migrations-workflow.md) | Workflow миграций Alembic в `backend/` | Accepted |
