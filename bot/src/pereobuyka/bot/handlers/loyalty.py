@@ -3,25 +3,15 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
 
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
+from pereobuyka.bot.display_datetime import format_api_datetime
 from pereobuyka.client.backend import BackendClient, BackendError, BackendUnavailableError
 
 logger = logging.getLogger(__name__)
-
-
-def _format_dt(raw_iso: str) -> str:
-    try:
-        value = datetime.fromisoformat(raw_iso.replace("Z", "+00:00"))
-    except ValueError:
-        return "—"
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=UTC)
-    return value.astimezone(UTC).strftime("%Y-%m-%d %H:%M")
 
 
 def _as_int(raw: object, default: int = 0) -> int:
@@ -37,7 +27,7 @@ def _as_int(raw: object, default: int = 0) -> int:
     return default
 
 
-async def run_bonus(message: Message, backend: BackendClient) -> None:
+async def run_bonus(message: Message, backend: BackendClient, display_timezone: str) -> None:
     if message.from_user is None:
         return
     user_client = backend.for_user(message.from_user.id)
@@ -56,14 +46,14 @@ async def run_bonus(message: Message, backend: BackendClient) -> None:
     if transactions:
         lines.append("\nПоследние операции:")
         for tx in transactions:
-            created = _format_dt(str(tx.get("created_at", "")))
+            created = format_api_datetime(str(tx.get("created_at", "")), display_timezone)
             tx_type = str(tx.get("type", "unknown"))
             amount = _as_int(tx.get("amount", 0))
             lines.append(f"• {created}: {tx_type} {amount:+d}")
     await message.answer("\n".join(lines))
 
 
-async def run_visits(message: Message, backend: BackendClient) -> None:
+async def run_visits(message: Message, backend: BackendClient, display_timezone: str) -> None:
     if message.from_user is None:
         return
     user_client = backend.for_user(message.from_user.id)
@@ -83,7 +73,7 @@ async def run_visits(message: Message, backend: BackendClient) -> None:
 
     lines = ["Последние визиты:\n"]
     for visit in visits:
-        confirmed_at = _format_dt(str(visit.get("confirmed_at", "")))
+        confirmed_at = format_api_datetime(str(visit.get("confirmed_at", "")), display_timezone)
         total_amount = str(visit.get("total_amount", "0"))
         bonus_earned = _as_int(visit.get("bonus_earned", 0))
         bonus_spent = _as_int(visit.get("bonus_spent", 0))
@@ -91,15 +81,15 @@ async def run_visits(message: Message, backend: BackendClient) -> None:
     await message.answer("\n".join(lines))
 
 
-def build_router(backend: BackendClient) -> Router:
+def build_router(backend: BackendClient, display_timezone: str) -> Router:
     router = Router()
 
     @router.message(Command("bonus"))
     async def cmd_bonus(message: Message) -> None:
-        await run_bonus(message, backend)
+        await run_bonus(message, backend, display_timezone)
 
     @router.message(Command("visits"))
     async def cmd_visits(message: Message) -> None:
-        await run_visits(message, backend)
+        await run_visits(message, backend, display_timezone)
 
     return router

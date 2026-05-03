@@ -10,6 +10,8 @@
 Каждый tasklist соответствует одной области (backend, database, integrations, frontend, devops)
 и конкретному этапу или группе этапов.
 
+Отложенные улучшения без привязки к итерации: **[`docs/backlog.md`](backlog.md)**.
+
 ---
 
 ## Легенда статусов
@@ -62,7 +64,7 @@
 
 **Статус:** ✅ done
 
-**Факт реализации:** по [tasklist-backend.md](tasks/tasklist-backend.md) выполнены итерации **iter-01–iter-07**; по контракту OpenAPI реализованы маршруты **клиента и администратора** (в т.ч. auth Telegram, записи, визиты, лояльность, CRUD услуг и расписания, подтверждение визита и бонусы). Режим **PostgreSQL** — полный набор; без БД (SQLite) остаются только ранние базовые эндпоинты каталога/слотов/записи.
+**Факт реализации:** по [tasklist-backend.md](tasks/tasklist-backend.md) выполнены итерации **iter-be-01–iter-be-07**; по контракту OpenAPI реализованы маршруты **клиента и администратора** (в т.ч. auth Telegram, записи, визиты, лояльность, CRUD услуг и расписания, подтверждение визита и бонусы). Режим **PostgreSQL** — полный набор; без БД (SQLite) остаются только ранние базовые эндпоинты каталога/слотов/записи.
 
 По [tasklist-database.md](tasks/tasklist-database.md) **область database закрыта** (**iter-db-01–iter-db-05**): миграции Alembic, seed (включая пользователя-админа для `ADMIN_ACTOR_USER_ID`), ORM и интеграционные тесты с Testcontainers.
 
@@ -89,7 +91,7 @@
 - актуализация `docs/tech/data-model.md` (логика + физика + ER; iter-db-02)
 - `docs/tech/adr/adr-004-database-migrations-workflow.md`, `docs/tech/database-migrations.md` (iter-db-03)
 - `docker-compose.yml`, цели `db-*` в `Makefile`, seed-скрипт (iter-db-04)
-- `backend/src/pereobuyka/db/`, `storage/postgres_repos.py`, `storage/repositories/`, `api/v1/endpoints/`, интеграционные тесты с Testcontainers (iter-db-05; полнота API этапа 1 — см. tasklist-backend iter-05)
+- `backend/src/pereobuyka/db/`, `storage/postgres_repos.py`, `storage/repositories/`, `api/v1/endpoints/`, интеграционные тесты с Testcontainers (iter-db-05; полнота API этапа 1 — см. tasklist-backend iter-be-05)
 
 **Связь с tasklists:**
 - [`tasklist-backend.md`](tasks/tasklist-backend.md)

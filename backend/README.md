@@ -66,11 +66,13 @@ make db-psql
 make backend-run
 ```
 
-Сервер стартует на `http://localhost:8000`.
+Сервер по умолчанию слушает **`127.0.0.1:8000`** (см. лог uvicorn). В браузере откройте **`http://127.0.0.1:8000/docs`** или `http://localhost:8000/docs` (что сработает у вас).
 
-- **Health check:** `http://localhost:8000/health`
-- **OpenAPI (Swagger UI):** `http://localhost:8000/docs`
-- **ReDoc:** `http://localhost:8000/redoc`
+**Бот и Next.js:** задавайте базовый URL API как **`http://127.0.0.1:8000`**. На Windows запросы на `http://localhost:8000` из Python/Node иногда уходят в IPv6 (`::1`), где сокет не поднят — получается «не подключается», хотя backend запущен.
+
+- **Health check:** `http://127.0.0.1:8000/health`
+- **OpenAPI (Swagger UI):** `http://127.0.0.1:8000/docs`
+- **ReDoc:** `http://127.0.0.1:8000/redoc`
 
 Остановить сервер:
 
@@ -86,7 +88,11 @@ make backend-stop
 |------------|-------------|--------------|----------|
 | `DATABASE_URL` | нет | `sqlite+aiosqlite:///./dev.db` | URL БД: SQLite для быстрых прогонов; PostgreSQL — `postgresql+asyncpg://...` (локально см. `make db-up`) |
 | `LOG_LEVEL` | нет | `INFO` | Уровень логирования: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `OPENROUTER_API_KEY` | нет | *(пусто)* | API-ключ OpenRouter — нужен только для LLM-консультации (этап 3) |
+| `OPENROUTER_API_KEY` | нет | *(пусто)* | API-ключ OpenRouter для **LLM-консультации** |
+| `SPEECH_TO_TEXT_PROVIDER` | нет | `openrouter` | STT: `openrouter` или `openai_multipart` |
+| `SPEECH_TO_TEXT_API_KEY` | нет | *(пусто)* | Ключ API для STT; см. ADR-005 |
+| `SPEECH_TO_TEXT_BASE_URL` | нет | *(пусто)* | База API STT; пусто при `openrouter` — как `OPENROUTER_BASE_URL`, при `openai_multipart` — `https://api.openai.com/v1` |
+| `SPEECH_TO_TEXT_MODEL` | нет | *(пусто)* | Модель STT; пусто: `openai/whisper-large-v3-turbo` (openrouter) или `whisper-1` (multipart) |
 | `OPENROUTER_MODEL` | нет | `openai/gpt-4o-mini` | Идентификатор модели OpenRouter |
 | `OPENROUTER_BASE_URL` | нет | `https://openrouter.ai/api/v1` | Base URL OpenRouter API |
 | `CONSULTATION_LLM_TIMEOUT_SECONDS` | нет | `45` | Таймаут HTTP к OpenRouter (секунды) |

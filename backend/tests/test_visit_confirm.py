@@ -3,6 +3,7 @@
 from fastapi.testclient import TestClient
 
 from pereobuyka.storage.memory import DEFAULT_SERVICE_ID
+from tests.booking_helpers import bookable_starts_at
 
 ADMIN_TOKEN = "test-admin-token"
 
@@ -18,11 +19,12 @@ def test_confirm_visit_earns_bonus_after_auth_and_booking(client: TestClient) ->
     user_id = auth.json()["user"]["id"]
     headers = {"Authorization": f"Bearer {token}"}
 
+    starts_at = bookable_starts_at(client)
     booking = client.post(
         "/api/v1/appointments",
         headers=headers,
         json={
-            "starts_at": "2026-04-20T11:00:00",
+            "starts_at": starts_at,
             "service_items": [{"service_id": str(DEFAULT_SERVICE_ID), "quantity": 1}],
             "bonus_spend": 0,
         },

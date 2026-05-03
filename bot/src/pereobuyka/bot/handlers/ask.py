@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import io
 import logging
 import re
 
-from aiogram import Router
+from aiogram import Bot, F, Router
 from aiogram.filters import BaseFilter, Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -142,6 +143,76 @@ def build_router(backend: BackendClient) -> Router:
             )
             return
         text, _ok = await _call_consultation(message.from_user.id, q, backend)
+        await message.answer(text, reply_markup=main_menu_reply(in_consultation=True))
+
+    @router.message(StateFilter(ConsultationStates.chatting), F.voice)
+    async def in_consultation_voice(message: Message, bot: Bot) -> None:
+        if message.from_user is None or message.voice is None:
+            return
+        user_id = message.from_user.id
+        voice = message.voice
+        buf = io.BytesIO()
+        try:
+            await bot.download(voice, destination=buf)
+        except Exception:
+            logger.exception("Failed to download voice message")
+            await message.answer(
+                "Не удалось загрузить голосовое сообщение. Напишите текстом или попробуйте ещё раз.",
+                reply_markup=main_menu_reply(in_consultation=True),
+            )
+            return
+        raw = buf.getvalue()
+        if not raw:
+            await message.answer(
+                "Пустое аудио. Запишите ещё раз или напишите текстом.",
+                reply_markup=main_menu_reply(in_consultation=True),
+            )
+            return
+
+        user_client = backend.for_user(user_id)
+        ext = "ogg" if (voice.mime_type and "ogg" in voice.mime_type) else "oga"
+        fname = f"{voice.file_unique_id}.{ext}"
+        ctype = voice.mime_type
+        try:
+            question = await user_client.transcribe_voice(
+                raw, filename=fname, content_type=ctype
+            )
+        except BackendUnavailableError:
+            await message.answer(
+                "Сервис временно недоступен. Попробуйте позже или напишите текстом.",
+                reply_markup=main_menu_reply(in_consultation=True),
+            )
+            return
+        except BackendError as exc:
+            if exc.status_code == 503:
+                await message.answer(
+                    "Распознавание голоса временно недоступно. Напишите вопрос текстом.",
+                    reply_markup=main_menu_reply(in_consultation=True),
+                )
+                return
+            logger.error("STT backend error: %s", exc)
+            await message.answer(
+                "Не удалось распознать голос. Напишите вопрос текстом.",
+                reply_markup=main_menu_reply(in_consultation=True),
+            )
+            return
+
+        question = (question or "").strip()
+        if not question:
+            await message.answer(
+                "Не удалось распознать речь. Повторите запись или напишите текстом.",
+                reply_markup=main_menu_reply(in_consultation=True),
+            )
+            return
+        if len(question) > _MAX_LEN:
+            await message.answer(
+                f"Распознанный текст слишком длинный (максимум {_MAX_LEN} символов). "
+                "Сократите вопрос.",
+                reply_markup=main_menu_reply(in_consultation=True),
+            )
+            return
+
+        text, _ok = await _call_consultation(user_id, question, backend)
         await message.answer(text, reply_markup=main_menu_reply(in_consultation=True))
 
     return router

@@ -1,4 +1,4 @@
-# План: iter-02 — API contract (vision scenarios)
+# План: iter-be-02 — API contract (vision scenarios)
 
 ## Цель
 
@@ -9,8 +9,8 @@
 1. Описать общую модель ошибок и авторизации (Bearer JWT; публичные vs защищённые маршруты).
 2. Собрать OpenAPI 3: ресурсы `User`, `Service`, `Schedule`, `Appointment`, `Visit`, бонусы, `FAQ`; клиентские и админские пути.
 3. Отдельно задокументировать коды доменных ошибок и соответствие HTTP.
-4. Связать с матрицей сценариев в [`docs/tasks/tasklist-backend.md`](../../../tasklist-backend.md) (iter-02).
-5. Текстовое описание эндпоинтов и соглашений — [`docs/tech/api/api-contracts.md`](../../../../tech/api/api-contracts.md) (дополняет OpenAPI; сквозной пункт tasklist iter-02).
+4. Связать с матрицей сценариев в [`docs/tasks/tasklist-backend.md`](../../../tasklist-backend.md) (iter-be-02).
+5. Текстовое описание эндпоинтов и соглашений — [`docs/tech/api/api-contracts.md`](../../../../tech/api/api-contracts.md) (дополняет OpenAPI; сквозной пункт tasklist iter-be-02).
 
 ## Артефакты
 

@@ -163,6 +163,7 @@ journey
 - **Роль модели** — консультант шиномонтажного сервиса. Модель не придумывает данные.
 - **Контекст** — backend готовит и передаёт модели: актуальный прайс, свободные слоты, правила бонусов. Модель опирается исключительно на этот контекст.
 - **Function calling** — только по необходимости (например, «оформить запись» как инструмент).
+- **Админская аналитика по БД** — отдельный сценарий NL→SQL только для маршрутов `/api/v1/admin/*` с валидацией SQL и белым списком таблиц ([ADR-006](tech/adr/adr-006-text-to-sql.md)); клиентский консультант произвольный SQL не выполняет.
 - Ошибки API и таймауты: логирование + понятное сообщение пользователю без утечки деталей.
 
 ```
@@ -182,7 +183,8 @@ journey
 | Интеграция | Назначение |
 |------------|------------|
 | **Telegram Bot API** | Канал взаимодействия с клиентами через бота |
-| **OpenRouter / LLM** | Консультационные диалоги на основе контекста |
+| **OpenRouter** | Провайдер **LLM**: консультационные диалоги на основе контекста; NL→SQL для админ-аналитики ([ADR-006](tech/adr/adr-006-text-to-sql.md)). При `SPEECH_TO_TEXT_PROVIDER=openrouter` — тот же хост для **STT** ([ADR-005](tech/adr/adr-005-speech-to-text.md)) |
+| **Облачный speech-to-text (STT)** | Распознавание голосовых сообщений Telegram в текст перед консультацией; режимы OpenRouter или OpenAI-совместимый multipart — [ADR-005](tech/adr/adr-005-speech-to-text.md), подробности в [integrations.md](tech/integrations.md) |
 
 ---
 
@@ -197,7 +199,7 @@ journey
 | Telegram | **aiogram** 3.x, long polling; webhook при выделении HTTP-сервера |
 | LLM-клиент | **openai** SDK (OpenRouter как провайдер) |
 | БД | SQLite (только локальная разработка) → **PostgreSQL с первого деплоя** |
-| Frontend | Определяется при старте web-фазы |
+| Frontend | **Next.js App Router**, React, TypeScript, Tailwind CSS, shadcn/ui, `pnpm` |
 | Автоматизация | **GNU Make** (`Makefile`) |
 
 ---
@@ -225,8 +227,10 @@ journey
 │           ├── llm/        # LLM-клиент и промпты
 │           ├── storage/    # репозитории, работа с БД
 │           └── models/     # доменные модели (dataclass / pydantic)
-├── web/                    # веб-приложение (frontend)
-│   └── ...                 # стек определяется при старте web-фазы
+├── web/                    # веб-приложение (Next.js App Router, shadcn/ui)
+│   ├── app/
+│   ├── components/
+│   └── lib/
 ├── tests/
 └── docs/
     ├── idea.md
@@ -267,6 +271,8 @@ journey
 | [ADR-002](tech/adr/adr-002-backend-framework.md) | HTTP-фреймворк backend: FastAPI | Accepted |
 | [ADR-003](tech/adr/adr-003-orm.md) | ORM и миграции: SQLAlchemy 2 async, Alembic | Accepted |
 | [ADR-004](tech/adr/adr-004-database-migrations-workflow.md) | Workflow миграций Alembic в репозитории | Accepted |
+| [ADR-005](tech/adr/adr-005-speech-to-text.md) | Серверный STT для голосовых консультаций | Accepted |
+| [ADR-006](tech/adr/adr-006-text-to-sql.md) | Админский NL→SQL к операционным данным (валидация, whitelist) | Accepted |
 
 ---
 
@@ -274,7 +280,7 @@ journey
 
 | Вопрос | Статус |
 |--------|--------|
-| Frontend-стек (React / Vue / другой) | Определяется при старте web-фазы |
+| Frontend-стек (React / Vue / другой) | Закрыто: Next.js App Router + React + TypeScript + Tailwind CSS + shadcn/ui |
 | Webhook vs. long polling для бота | Long polling в текущей версии; webhook при выделении сервера |
 | Монорепо vs. отдельные репозитории | Монорепо до явной потребности в разделении |
 | Деплой и инфраструктура | Вне текущего scope |

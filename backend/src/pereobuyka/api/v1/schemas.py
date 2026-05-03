@@ -1,13 +1,13 @@
 """Pydantic-схемы публичного API v1 (согласованы с docs/tech/api/openapi.yaml)."""
 
+from datetime import UTC, datetime, time
 from datetime import date as Date
-from datetime import datetime, time
 from decimal import Decimal
 from enum import StrEnum
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 
 class AppointmentStatus(StrEnum):
@@ -26,6 +26,13 @@ class UserRole(StrEnum):
 class UserSource(StrEnum):
     telegram = "telegram"
     web = "web"
+
+
+class AppointmentSource(StrEnum):
+    llm = "llm"
+    telegram_bot = "telegram_bot"
+    web = "web"
+    admin = "admin"
 
 
 class ServiceLineItem(BaseModel):
@@ -73,6 +80,8 @@ class Appointment(BaseModel):
     status: AppointmentStatus
     created_at: datetime
     service_items: list[ServiceLineItem]
+    source: AppointmentSource = AppointmentSource.web
+    discount_percent: int = Field(default=0, ge=0, le=100)
 
 
 class AppointmentListResponse(BaseModel):
@@ -88,6 +97,7 @@ class User(BaseModel):
     phone: str | None = None
     role: UserRole
     telegram_id: int | None = None
+    telegram_username: str | None = None
     registered_at: datetime
     source: UserSource
 
@@ -206,6 +216,10 @@ class Visit(BaseModel):
     confirmed_at: datetime
     confirmed_by_user_id: UUID
     lines: list[ServiceLineItem]
+    client_rating_stars: int | None = None
+    client_rating_comment: str | None = None
+    service_rating_stars: int | None = None
+    service_rating_comment: str | None = None
 
 
 class VisitListResponse(BaseModel):
@@ -262,6 +276,14 @@ class TelegramAuthRequest(BaseModel):
     phone: str | None = None
 
 
+class WebAuthRequest(BaseModel):
+    """Вход клиента в веб по Telegram username (MVP без доказательства владения)."""
+
+    telegram_username: str = Field(min_length=1, max_length=64)
+    name: str | None = Field(default=None, max_length=200)
+    phone: str | None = Field(default=None, max_length=32)
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -281,3 +303,163 @@ class ConsultationRequest(BaseModel):
 class ConsultationResponse(BaseModel):
     reply: str
     request_id: UUID | None = None
+
+
+class ConsultationTranscribeResponse(BaseModel):
+    text: str
+
+
+class ConsultationMessageOut(BaseModel):
+    id: UUID
+    role: Literal["user", "assistant"]
+    content: str
+    created_at: datetime
+    request_id: UUID | None = None
+
+
+class ConsultationMessageListResponse(BaseModel):
+    items: list[ConsultationMessageOut]
+    total: int
+
+
+class DashboardTodayResponse(BaseModel):
+    date: Date
+    appointments_total: int
+    visits_total: int
+    cancellations_total: int
+    bookings_scheduled_today_by_source: dict[str, int]
+    consultation_user_messages_last_7_days: int
+
+
+class WeekGridEvent(BaseModel):
+    state: Literal["scheduled", "completed", "cancelled"]
+    appointment_id: UUID
+    visit_id: UUID | None = None
+    total_price: str
+    client_name: str
+    service_summaries: list[str]
+    client_rating_stars: int | None = None
+    client_rating_comment: str | None = None
+
+
+def _datetime_utc_iso_z(dt: datetime) -> str:
+    """UTC instant для JSON: всегда с суффиксом Z (не +00:00)."""
+    aware = dt.astimezone(UTC) if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+    if aware.microsecond:
+        return aware.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+    return aware.strftime("%Y-%m-%dT%H:%M:%S") + "Z"
+
+
+class WeekGridSlot(BaseModel):
+    starts_at: datetime
+    ends_at: datetime
+    events: list[WeekGridEvent]
+
+    @field_serializer("starts_at", "ends_at", when_used="json")
+    def ser_slot_bounds_utc_z(self, value: datetime) -> str:
+        return _datetime_utc_iso_z(value)
+
+
+class WeekGridDay(BaseModel):
+    date: Date
+    slots: list[WeekGridSlot]
+
+
+class WeekGridResponse(BaseModel):
+    week_start: Date
+    slot_step_minutes: int
+    days: list[WeekGridDay]
+
+
+class AnalyticsWeekDay(BaseModel):
+    date: Date
+    appointments_count: int
+    visits_count: int
+    cancellations_count: int
+    revenue_amount: str
+    bookings_by_source: dict[str, int]
+
+
+class TopServiceStat(BaseModel):
+    service_id: UUID
+    name: str
+    bookings_count: int
+
+
+class AnalyticsWeekResponse(BaseModel):
+    """Недельная аналитика для графиков."""
+
+    week_start: Date
+    top_services: list[TopServiceStat]
+    days: list[AnalyticsWeekDay]
+
+
+class AdminClientRow(BaseModel):
+    user_id: UUID
+    name: str
+    phone: str | None
+    telegram_id: int | None
+    telegram_username: str | None
+    visits_count: int
+    total_spent: str
+    bonus_balance: int
+    rating_avg: str | None
+
+
+class AdminClientListResponse(BaseModel):
+    items: list[AdminClientRow]
+    total: int
+
+
+class AdminClientQuickCreateBody(BaseModel):
+    """Быстрое заведение клиента из админки (без Telegram)."""
+
+    name: str = Field(min_length=1, max_length=200)
+    phone: str | None = None
+
+
+class AdminAppointmentCreateBody(BaseModel):
+    """Создание записи на клиента из админ-панели."""
+
+    user_id: UUID
+    starts_at: datetime
+    service_items: list[ServiceLineItem]
+    discount_percent: int = Field(default=0, ge=0, le=100)
+
+
+class AdminAppointmentPatchBody(BaseModel):
+    status: AppointmentStatus | None = None
+    service_items: list[ServiceLineItem] | None = None
+    discount_percent: int | None = Field(default=None, ge=0, le=100)
+    source: AppointmentSource | None = None
+
+
+class AdminVisitPatchBody(BaseModel):
+    lines: list[ServiceLineItem] | None = None
+    total_amount: str | None = None
+    bonus_spent: int | None = Field(default=None, ge=0)
+    bonus_earned: int | None = Field(default=None, ge=0)
+
+
+class VisitRatingBody(BaseModel):
+    stars: int = Field(ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=2000)
+
+
+class ServiceRatingBody(BaseModel):
+    stars: int = Field(ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=2000)
+
+
+class AdminDataInsightRequest(BaseModel):
+    """Вопрос администратора на естественном языке → безопасный SELECT."""
+
+    question: str = Field(min_length=1, max_length=2000)
+
+
+class AdminDataInsightResponse(BaseModel):
+    summary: str
+    sql_executed: str
+    columns: list[str]
+    rows: list[dict[str, object]]
+    truncated: bool

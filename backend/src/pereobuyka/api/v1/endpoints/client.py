@@ -16,10 +16,13 @@ from pereobuyka.api.v1.schemas import (
     AppointmentStatus,
     BonusTransactionListResponse,
     LoyaltyRules,
+    ServiceRatingBody,
     User,
     VisitListResponse,
 )
 from pereobuyka.api.v1.schemas import BonusAccount as BonusAccountOut
+from pereobuyka.api.v1.schemas import Visit as VisitOut
+from pereobuyka.services.admin_mutations_pg import set_service_rating_client
 from pereobuyka.services.api_adapters import appointment_from_orm, visit_from_orm
 from pereobuyka.services.auth_user_pg import get_me_pg
 from pereobuyka.services.visit_commands import (
@@ -80,7 +83,10 @@ async def patch_my_appointment(
         raise HTTPException(
             status_code=422,
             detail={
-                "error": {"code": "VALIDATION", "message": "Клиент может только отменить запись"}
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Клиент может только отменить запись",
+                },
             },
         )
     appt_repo = PostgresAppointmentRepository(session)
@@ -142,3 +148,23 @@ async def my_bonus_transactions(
 ) -> BonusTransactionListResponse:
     """История бонусных операций."""
     return await list_bonus_transactions_client(session, user_id, limit=limit, offset=offset)
+
+
+@router.post(
+    "/me/visits/{visit_id}/service-rating",
+    response_model=VisitOut,
+    status_code=200,
+)
+async def rate_service_for_visit(
+    session: SessionPg,
+    user_id: CurrentUser,
+    visit_id: UUID,
+    body: ServiceRatingBody,
+) -> VisitOut:
+    return await set_service_rating_client(
+        session,
+        user_id=user_id,
+        visit_id=visit_id,
+        stars=body.stars,
+        comment=body.comment,
+    )

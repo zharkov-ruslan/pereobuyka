@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 class BookStates(StatesGroup):
     choosing_service = State()
     entering_date = State()
+    entering_custom_date = State()
     choosing_slot = State()
 
 
@@ -45,6 +46,12 @@ class ServiceCb(CallbackData, prefix="bksvc"):
 
 class DateCb(CallbackData, prefix="bkdate"):
     iso_date: str
+
+
+class OtherDateCb(CallbackData, prefix="bkotherdate"):
+    """Переход к вводу произвольной даты текстом."""
+
+    pass
 
 
 class SlotCb(CallbackData, prefix="bkslot"):
@@ -62,6 +69,25 @@ class CancelCb(CallbackData, prefix="bkcancel"):
 
 def _today() -> date:
     return datetime.now(tz=UTC).date()
+
+
+def _max_booking_day() -> date:
+    """Верхняя граница произвольной даты (горизонт записи)."""
+    return _today() + timedelta(days=365)
+
+
+def _parse_custom_date_text(text: str) -> date | None:
+    """ДД.ММ.ГГГГ, ДД.ММ.ГГ или ГГГГ-ММ-ДД."""
+    s = text.strip()
+    for fmt in ("%d.%m.%Y", "%d.%m.%y"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    try:
+        return date.fromisoformat(s)
+    except ValueError:
+        return None
 
 
 def _filter_upcoming_slots(slots: list[SlotWindow], day: date) -> list[SlotWindow]:
@@ -105,6 +131,7 @@ def _date_keyboard(*, include_today: bool = True) -> InlineKeyboardMarkup:
             (d3, d3.strftime("%d.%m")),
         ]
     buttons = [[InlineKeyboardButton(text=label, callback_data=DateCb(iso_date=str(d)).pack())] for d, label in days]
+    buttons.append([InlineKeyboardButton(text="Другая дата…", callback_data=OtherDateCb().pack())])
     buttons.append([InlineKeyboardButton(text="Отмена", callback_data=CancelCb().pack())])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -131,6 +158,79 @@ def _slot_keyboard(slots: list[SlotWindow]) -> InlineKeyboardMarkup:
         rows.append(row)
     rows.append([InlineKeyboardButton(text="Отмена", callback_data=CancelCb().pack())])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+class _SlotsClientProtocol(Protocol):
+    async def get_slots(self, date_from: date, date_to: date, service_ids: list[UUID]) -> list[SlotWindow]:
+        """Список слотов с backend."""
+
+
+async def _reply_booking_after_date(
+    *,
+    state: FSMContext,
+    user_client: _SlotsClientProtocol,
+    service_id: UUID,
+    chosen_date: date,
+    target: Message,
+    edit: bool,
+) -> None:
+    """После выбора даты — запрос слотов и переход к выбору окна или назад к датам."""
+    fsm_data = await state.get_data()
+    include_today = bool(fsm_data.get("include_today_in_date_kb", True))
+    iso_display = chosen_date.strftime("%d.%m.%Y")
+
+    async def _send(text: str, reply_markup: InlineKeyboardMarkup | None = None) -> None:
+        if edit:
+            await target.edit_text(text, reply_markup=reply_markup)
+        else:
+            await target.answer(text, reply_markup=reply_markup)
+
+    try:
+        slots = await user_client.get_slots(chosen_date, chosen_date, [service_id])
+    except BackendUnavailableError:
+        await _send("Сервис временно недоступен. Попробуйте позже.")
+        await state.clear()
+        return
+    except BackendError as exc:
+        logger.error("Backend error fetching slots: %s", exc)
+        await _send("Не удалось получить слоты. Попробуйте позже.")
+        await state.clear()
+        return
+
+    upcoming = _filter_upcoming_slots(slots, chosen_date)
+    tday = _today()
+    if not upcoming:
+        if chosen_date == tday and slots:
+            await _send(
+                "Запись на сегодня невозможна: на оставшееся время нет свободных окон. Выберите другую дату:",
+                reply_markup=_date_keyboard(include_today=False),
+            )
+        else:
+            await _send(
+                f"На {iso_display} свободных окон нет. Выберите другую дату:",
+                reply_markup=_date_keyboard(include_today=include_today),
+            )
+        await state.set_state(BookStates.entering_date)
+        return
+
+    await state.update_data(chosen_date=chosen_date.isoformat())
+    await state.set_state(BookStates.choosing_slot)
+    await _send(
+        f"Доступные окна на {iso_display}:",
+        reply_markup=_slot_keyboard(upcoming),
+    )
+
+
+async def _refetch_slots(
+    user_client: _SlotsClientProtocol, fsm_data: dict[str, Any], service_id: str
+) -> list[SlotWindow]:
+    """Повторно запросить слоты при конфликте 409."""
+    try:
+        chosen_date = date.fromisoformat(fsm_data.get("chosen_date", str(_today())))
+        raw = await user_client.get_slots(chosen_date, chosen_date, [UUID(service_id)])
+        return _filter_upcoming_slots(raw, chosen_date)
+    except BackendError:
+        return []
 
 
 # ── Построение роутера ───────────────────────────────────────────────────────
@@ -193,11 +293,6 @@ def build_router(backend: BackendClient) -> Router:
             await callback.answer("Не удалось определить пользователя.")
             return
         service_name = str(service["name"])
-        await state.update_data(
-            service_id=callback_data.service_id,
-            service_name=service_name,
-            duration=int(service["duration_minutes"]),
-        )
         include_today = True
         user_client = backend.for_user(callback.from_user.id)
         try:
@@ -205,6 +300,12 @@ def build_router(backend: BackendClient) -> Router:
             include_today = bool(_filter_upcoming_slots(day_slots, _today()))
         except (BackendUnavailableError, BackendError):
             pass
+        await state.update_data(
+            service_id=callback_data.service_id,
+            service_name=service_name,
+            duration=int(service["duration_minutes"]),
+            include_today_in_date_kb=include_today,
+        )
         await state.set_state(BookStates.entering_date)
         await callback.message.edit_text(  # type: ignore[union-attr]
             f"Услуга: {service_name}\n\nВыберите дату:",
@@ -223,47 +324,73 @@ def build_router(backend: BackendClient) -> Router:
             return
 
         user_client = backend.for_user(callback.from_user.id)
-        try:
-            slots = await user_client.get_slots(chosen_date, chosen_date, [service_id])
-        except BackendUnavailableError:
-            await callback.message.edit_text(  # type: ignore[union-attr]
-                "Сервис временно недоступен. Попробуйте позже."
-            )
-            await state.clear()
-            await callback.answer()
+        if callback.message is None:
+            await callback.answer("Не удалось обновить сообщение.")
             return
-        except BackendError as exc:
-            logger.error("Backend error fetching slots: %s", exc)
-            await callback.message.edit_text(  # type: ignore[union-attr]
-                "Не удалось получить слоты. Попробуйте позже."
-            )
-            await state.clear()
-            await callback.answer()
-            return
-
-        upcoming = _filter_upcoming_slots(slots, chosen_date)
-        tday = _today()
-        if not upcoming:
-            if chosen_date == tday and slots:
-                await callback.message.edit_text(  # type: ignore[union-attr]
-                    "Запись на сегодня невозможна: на оставшееся время нет свободных окон. Выберите другую дату:",
-                    reply_markup=_date_keyboard(include_today=False),
-                )
-            else:
-                await callback.message.edit_text(  # type: ignore[union-attr]
-                    f"На {callback_data.iso_date} свободных окон нет. Выберите другую дату:",
-                    reply_markup=_date_keyboard(),
-                )
-            await callback.answer()
-            return
-
-        await state.update_data(chosen_date=callback_data.iso_date)
-        await state.set_state(BookStates.choosing_slot)
-        await callback.message.edit_text(  # type: ignore[union-attr]
-            f"Доступные окна на {callback_data.iso_date}:",
-            reply_markup=_slot_keyboard(upcoming),
+        await _reply_booking_after_date(
+            state=state,
+            user_client=user_client,
+            service_id=service_id,
+            chosen_date=chosen_date,
+            target=callback.message,
+            edit=True,
         )
         await callback.answer()
+
+    @router.callback_query(BookStates.entering_date, OtherDateCb.filter())
+    async def on_other_date_requested(callback: CallbackQuery, state: FSMContext) -> None:
+        fsm_data = await state.get_data()
+        service_name = str(fsm_data.get("service_name", ""))
+        await state.set_state(BookStates.entering_custom_date)
+        if callback.message is None:
+            await callback.answer("Не удалось обновить сообщение.")
+            return
+        await callback.message.edit_text(
+            f"Услуга: {service_name}\n\n"
+            "Введите дату текстом: ДД.ММ.ГГГГ или ГГГГ-ММ-ДД "
+            f"(не раньше сегодня и не позже {_max_booking_day().strftime('%d.%m.%Y')}).\n"
+            "Например: 15.07.2026. Отмена — /cancel.",
+        )
+        await callback.answer()
+
+    @router.message(BookStates.entering_custom_date, Command("cancel"))
+    async def on_custom_date_cancel(message: Message, state: FSMContext) -> None:
+        await state.clear()
+        await message.answer("Запись отменена.", reply_markup=main_menu_reply(in_consultation=False))
+
+    @router.message(BookStates.entering_custom_date, F.text)
+    async def on_custom_date_text(message: Message, state: FSMContext) -> None:
+        if not message.from_user:
+            return
+        parsed = _parse_custom_date_text(message.text or "")
+        if parsed is None:
+            await message.answer(
+                "Не получилось разобрать дату. Укажите ДД.ММ.ГГГГ или ГГГГ-ММ-ДД "
+                "(например, 15.07.2026). /cancel — отмена.",
+            )
+            return
+        tday = _today()
+        max_d = _max_booking_day()
+        if parsed < tday:
+            await message.answer("Нужна дата не раньше сегодня. Попробуйте ещё раз или /cancel.")
+            return
+        if parsed > max_d:
+            await message.answer(
+                f"Слишком далёкая дата. Выберите не позже {max_d.strftime('%d.%m.%Y')} или /cancel."
+            )
+            return
+
+        fsm_data = await state.get_data()
+        service_id = UUID(fsm_data["service_id"])
+        user_client = backend.for_user(message.from_user.id)
+        await _reply_booking_after_date(
+            state=state,
+            user_client=user_client,
+            service_id=service_id,
+            chosen_date=parsed,
+            target=message,
+            edit=False,
+        )
 
     @router.callback_query(BookStates.choosing_slot, SlotCb.filter())
     async def on_slot_chosen(callback: CallbackQuery, callback_data: SlotCb, state: FSMContext) -> None:
@@ -330,25 +457,8 @@ def build_router(backend: BackendClient) -> Router:
         await callback.answer()
 
     # Игнорировать callback'и не в нужных состояниях (защита от устаревших сообщений)
-    @router.callback_query(F.data.startswith(("bksvc:", "bkdate:", "bkslot:")))
+    @router.callback_query(F.data.startswith(("bksvc:", "bkdate:", "bkslot:", "bkotherdate:")))
     async def on_stale_callback(callback: CallbackQuery) -> None:
         await callback.answer("Сессия устарела. Начните заново с /book.", show_alert=True)
 
     return router
-
-
-class _SlotsClientProtocol(Protocol):
-    async def get_slots(self, date_from: date, date_to: date, service_ids: list[UUID]) -> list[SlotWindow]:
-        """Return slot list from backend."""
-
-
-async def _refetch_slots(
-    user_client: _SlotsClientProtocol, fsm_data: dict[str, Any], service_id: str
-) -> list[SlotWindow]:
-    """Повторно запросить слоты при конфликте 409."""
-    try:
-        chosen_date = date.fromisoformat(fsm_data.get("chosen_date", str(_today())))
-        raw = await user_client.get_slots(chosen_date, chosen_date, [UUID(service_id)])
-        return _filter_upcoming_slots(raw, chosen_date)
-    except BackendError:
-        return []

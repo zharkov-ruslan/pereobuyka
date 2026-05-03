@@ -12,13 +12,13 @@ from pereobuyka.bot.handlers.start import build_router as build_start_router
 from pereobuyka.client.backend import BackendClient
 
 
-def build_root_router(*, backend: BackendClient) -> Router:
+def build_root_router(*, backend: BackendClient, display_timezone: str) -> Router:
     router = Router()
     router.include_router(build_start_router(backend))
-    router.include_router(build_menu_router(backend))
+    router.include_router(build_menu_router(backend, display_timezone))
     router.include_router(build_ask_router(backend))
     router.include_router(build_services_router(backend))
     router.include_router(build_book_router(backend))
-    router.include_router(build_appointments_router(backend))
-    router.include_router(build_loyalty_router(backend))
+    router.include_router(build_appointments_router(backend, display_timezone))
+    router.include_router(build_loyalty_router(backend, display_timezone))
     return router

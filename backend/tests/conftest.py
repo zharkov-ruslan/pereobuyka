@@ -100,7 +100,7 @@ def truncate_appointments(postgres_connection_url: str) -> Generator[None, None,
     with engine.begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE bonus_transactions, visit_lines, visits, "
+                "TRUNCATE consultation_messages, bonus_transactions, visit_lines, visits, "
                 "appointment_services, appointments, bonus_accounts RESTART IDENTITY CASCADE"
             )
         )
@@ -108,7 +108,7 @@ def truncate_appointments(postgres_connection_url: str) -> Generator[None, None,
     with engine.begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE bonus_transactions, visit_lines, visits, "
+                "TRUNCATE consultation_messages, bonus_transactions, visit_lines, visits, "
                 "appointment_services, appointments, bonus_accounts RESTART IDENTITY CASCADE"
             )
         )

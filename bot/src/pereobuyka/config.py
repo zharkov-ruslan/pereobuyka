@@ -42,20 +42,24 @@ class AppConfig:
     bot_secret: str
     # POST /consultation: несколько раундов tool-calls на бэке; 60s часто мало
     consultation_request_timeout: float
+    # IANA (как CONSULTATION_BUSINESS_TIMEZONE на бэке): даты в «Активные записи», /visits, /bonus
+    display_timezone: str
 
 
 def load_config() -> AppConfig:
     # Local development convenience: load variables from `.env` if present.
     # При запуске как установленного пакета __file__ может указывать в uv-cache,
-    # поэтому сначала пробуем cwd/.env, затем путь проекта из исходников.
+    # поэтому сначала cwd (общие переменные), затем **bot/.env** с override=True —
+    # чтобы при запуске из корня репозитория настройки бота не терялись из‑за чужого `.env` в cwd.
     # Secrets should NOT be committed; see `.env.example`.
     load_dotenv(Path.cwd() / ".env", override=False)
-    load_dotenv(_BOT_PROJECT_DIR / ".env", override=False)
+    load_dotenv(_BOT_PROJECT_DIR / ".env", override=True)
 
     return AppConfig(
         telegram_bot_token=_require_env("TELEGRAM_BOT_TOKEN"),
         log_level=_env("LOG_LEVEL", "INFO").upper(),
-        backend_base_url=_env("BACKEND_BASE_URL", "http://localhost:8000"),
+        backend_base_url=_env("BACKEND_BASE_URL", "http://127.0.0.1:8000"),
         bot_secret=_env("BOT_SECRET", ""),
         consultation_request_timeout=_env_float("CONSULTATION_REQUEST_TIMEOUT", 300.0),
+        display_timezone=_env("DISPLAY_TIMEZONE", "Europe/Moscow"),
     )

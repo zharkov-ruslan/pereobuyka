@@ -9,7 +9,7 @@
 ## Предпосылки
 
 - Установлен **uv**, проект backend: каталог `backend/`.
-- Доступна база **PostgreSQL** (локально: `make db-up` из корня репозитория, см. [iter-db-04](../tasks/tasklist-database.md#iter-db-04--infra-локальный-postgresql-migrations-seed) и [backend/README.md](../../backend/README.md)).
+- Доступна база **PostgreSQL** (локально: `make db-up` из корня репозитория, см. [iter-db-04](../tasks/tasklist-database.md#iter-db-04-инфраструктура-бд-seed-команды) и [backend/README.md](../../backend/README.md)).
 - Переменная **`DATABASE_URL`** (или согласованный алиас в `backend` config) указывает на нужную БД.
 
 Все команды ниже выполняются из **`backend/`** (или с префиксом `cd backend &&`):

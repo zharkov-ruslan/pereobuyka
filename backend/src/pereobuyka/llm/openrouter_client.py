@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
 from openai import (
     APIConnectionError,
-    APITimeoutError,
     APIStatusError,
+    APITimeoutError,
     AsyncOpenAI,
     AuthenticationError,
     BadRequestError,
@@ -23,15 +22,19 @@ from openai import (
 
 from pereobuyka.llm.errors import ConsultationProviderError
 
+logger = logging.getLogger(__name__)
+
 # В Telegram уходят только нейтральные формулировки; детали — в логи сервера.
 _MSG_RATE = (
-    "Сейчас консультант не может ответить из-за высокой нагрузки. "
-    "Попробуйте через несколько минут."
+    "Сейчас консультант не может ответить из-за высокой нагрузки. Попробуйте через несколько минут."
 )
 _MSG_403 = "Консультант временно недоступен. Попробуйте позже."
 _MSG_GENERIC = "Консультант временно недоступен. Попробуйте позже."
 _MSG_TIMEOUT = "Ответ консультанта занял слишком много времени. Попробуйте ещё раз."
 _MSG_UNREACHABLE = "Консультант сейчас не на связи. Попробуйте позже."
+
+# Паузы между повторами при 429 от OpenRouter (секунды); всего попыток = len + 1.
+_RATE_LIMIT_RETRY_DELAYS_SEC = (1.5, 3.0)
 
 
 def _provider_error_from_api_status(e: APIStatusError) -> ConsultationProviderError:
@@ -73,30 +76,98 @@ class OpenRouterChatClient:
         if tools:
             kwargs["tools"] = list(tools)
             kwargs["tool_choice"] = "auto"
-        try:
-            return await self._client.chat.completions.create(**kwargs)
-        except APITimeoutError as e:
-            logger.warning("LLM request timeout: %s", e)
-            raise ConsultationProviderError(_MSG_TIMEOUT) from e
-        except APIConnectionError as e:
-            logger.warning("LLM connection error: %s", e)
-            raise ConsultationProviderError(_MSG_UNREACHABLE) from e
-        except RateLimitError as e:
-            logger.warning("LLM rate limit: %s", e)
-            raise ConsultationProviderError(_MSG_RATE) from e
-        except AuthenticationError as e:
-            logger.error("LLM auth failed (проверьте OPENROUTER_API_KEY): %s", e)
-            raise ConsultationProviderError(_MSG_GENERIC) from e
-        except PermissionDeniedError as e:
-            logger.warning("LLM 403: %s", (e.message or e))
-            raise ConsultationProviderError(_MSG_403) from e
-        except BadRequestError as e:
-            raise _provider_error_from_api_status(e) from e
-        except InternalServerError as e:
-            logger.warning("LLM 5xx: %s", e)
-            raise ConsultationProviderError(_MSG_GENERIC) from e
-        except APIStatusError as e:
-            raise _provider_error_from_api_status(e) from e
-        except OpenAIError as e:
-            logger.warning("LLM OpenAIError: %s", e)
-            raise ConsultationProviderError(_MSG_GENERIC) from e
+
+        rate_attempt = 0
+        while True:
+            try:
+                return await self._client.chat.completions.create(**kwargs)
+            except RateLimitError as e:
+                if rate_attempt >= len(_RATE_LIMIT_RETRY_DELAYS_SEC):
+                    logger.warning("LLM rate limit (исчерпаны повторы): %s", e)
+                    raise ConsultationProviderError(_MSG_RATE) from e
+                delay = _RATE_LIMIT_RETRY_DELAYS_SEC[rate_attempt]
+                logger.warning(
+                    "OpenRouter rate limit; пауза %.1fs и повтор запроса (%s/%s)",
+                    delay,
+                    rate_attempt + 1,
+                    len(_RATE_LIMIT_RETRY_DELAYS_SEC) + 1,
+                )
+                await asyncio.sleep(delay)
+                rate_attempt += 1
+            except APITimeoutError as e:
+                logger.warning("LLM request timeout: %s", e)
+                raise ConsultationProviderError(_MSG_TIMEOUT) from e
+            except APIConnectionError as e:
+                logger.warning("LLM connection error: %s", e)
+                raise ConsultationProviderError(_MSG_UNREACHABLE) from e
+            except AuthenticationError as e:
+                logger.error("LLM auth failed (проверьте OPENROUTER_API_KEY): %s", e)
+                raise ConsultationProviderError(_MSG_GENERIC) from e
+            except PermissionDeniedError as e:
+                logger.warning("LLM 403: %s", (e.message or e))
+                raise ConsultationProviderError(_MSG_403) from e
+            except BadRequestError as e:
+                raise _provider_error_from_api_status(e) from e
+            except InternalServerError as e:
+                logger.warning("LLM 5xx: %s", e)
+                raise ConsultationProviderError(_MSG_GENERIC) from e
+            except APIStatusError as e:
+                raise _provider_error_from_api_status(e) from e
+            except OpenAIError as e:
+                logger.warning("LLM OpenAIError: %s", e)
+                raise ConsultationProviderError(_MSG_GENERIC) from e
+
+    async def create_chat_completion_text(
+        self,
+        *,
+        messages: Sequence[Mapping[str, Any]],
+        response_format: Mapping[str, str] | None = None,
+    ) -> str:
+        """Один вызов completions без tools; опционально ``response_format=json_object``."""
+        kwargs: dict[str, Any] = {
+            "model": self._model,
+            "messages": list(messages),
+        }
+        if response_format is not None:
+            kwargs["response_format"] = dict(response_format)
+
+        rate_attempt = 0
+        while True:
+            try:
+                completion = await self._client.chat.completions.create(**kwargs)
+                return (completion.choices[0].message.content or "").strip()
+            except RateLimitError as e:
+                if rate_attempt >= len(_RATE_LIMIT_RETRY_DELAYS_SEC):
+                    logger.warning("LLM rate limit (исчерпаны повторы): %s", e)
+                    raise ConsultationProviderError(_MSG_RATE) from e
+                delay = _RATE_LIMIT_RETRY_DELAYS_SEC[rate_attempt]
+                logger.warning(
+                    "OpenRouter rate limit; пауза %.1fs и повтор запроса (%s/%s)",
+                    delay,
+                    rate_attempt + 1,
+                    len(_RATE_LIMIT_RETRY_DELAYS_SEC) + 1,
+                )
+                await asyncio.sleep(delay)
+                rate_attempt += 1
+            except APITimeoutError as e:
+                logger.warning("LLM request timeout: %s", e)
+                raise ConsultationProviderError(_MSG_TIMEOUT) from e
+            except APIConnectionError as e:
+                logger.warning("LLM connection error: %s", e)
+                raise ConsultationProviderError(_MSG_UNREACHABLE) from e
+            except AuthenticationError as e:
+                logger.error("LLM auth failed (проверьте OPENROUTER_API_KEY): %s", e)
+                raise ConsultationProviderError(_MSG_GENERIC) from e
+            except PermissionDeniedError as e:
+                logger.warning("LLM 403: %s", (e.message or e))
+                raise ConsultationProviderError(_MSG_403) from e
+            except BadRequestError as e:
+                raise _provider_error_from_api_status(e) from e
+            except InternalServerError as e:
+                logger.warning("LLM 5xx: %s", e)
+                raise ConsultationProviderError(_MSG_GENERIC) from e
+            except APIStatusError as e:
+                raise _provider_error_from_api_status(e) from e
+            except OpenAIError as e:
+                logger.warning("LLM OpenAIError: %s", e)
+                raise ConsultationProviderError(_MSG_GENERIC) from e

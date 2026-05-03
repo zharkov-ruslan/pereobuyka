@@ -21,7 +21,7 @@
 | Бизнес-правила (слоты, цены, бонусы) | Согласование полей и транзакций | Да — основная логика |
 | OpenAPI / HTTP-контракты | Согласование идентификаторов и полей при расхождениях | Да — источник эндпоинтов |
 | Интеграционные тесты с PostgreSQL (**pytest** + **Testcontainers**) | Да: фикстуры, dev-зависимость, Docker | Запуск тестов, поддержка conftest |
-| Telegram-бот, aiogram | Нет | iter-07 и далее |
+| Telegram-бот, aiogram | Нет | iter-be-07 и далее |
 
 ---
 
@@ -56,11 +56,11 @@
 
 | ID | Итерация | Статус | Зависимости | Ключевые артефакты |
 |----|----------|--------|-------------|-------------------|
-| [iter-db-01](#iter-db-01--user-scenarios-сценарии-и-требования-к-данным) | Сценарии и требования к данным | ✅ done | — | [`docs/tech/user_scenarios.md`](../tech/user_scenarios.md), [`docs/plan.md`](../plan.md), примечание в [`docs/tech/data-model.md`](../tech/data-model.md) |
-| [iter-db-02](#iter-db-02--schema--er-логическая-и-физическая-модель) | Логическая и физическая модель + ER | ✅ done | iter-db-01 | [`docs/tech/data-model.md`](../tech/data-model.md), [summary iter-db-02](impl/database/iteration-02-schema-er/summary.md) |
-| [iter-db-03](#iter-db-03--migrations--access-adr-и-практическая-справка) | ADR и практическая справка по миграциям/доступу | ✅ done | iter-db-02* | [ADR-004](../tech/adr/adr-004-database-migrations-workflow.md), [database-migrations.md](../tech/database-migrations.md), реестр ADR |
-| [iter-db-04](#iter-db-04--infra-локальный-postgresql-migrations-seed) | Инфраструктура БД, seed, команды | ✅ done | iter-db-03 | [docker-compose.yml](../../docker-compose.yml), [Makefile](../../Makefile), `backend/alembic/versions/`, seed, README |
-| [iter-db-05](#iter-db-05--orm-repos-backend-замена-in-memory) | ORM, репозитории, интеграция backend | ✅ done | iter-db-04 | [`backend/src/pereobuyka/db/`](../../backend/src/pereobuyka/db/), [`postgres_repos.py`](../../backend/src/pereobuyka/storage/postgres_repos.py), pytest + **Testcontainers** |
+| [iter-db-01](#iter-db-01-сценарии-и-требования-к-данным) | Сценарии и требования к данным | ✅ done | — | [`docs/tech/user_scenarios.md`](../tech/user_scenarios.md), [`docs/plan.md`](../plan.md), примечание в [`docs/tech/data-model.md`](../tech/data-model.md) |
+| [iter-db-02](#iter-db-02-логическая-и-физическая-модель-er) | Логическая и физическая модель + ER | ✅ done | iter-db-01 | [`docs/tech/data-model.md`](../tech/data-model.md), [summary iter-db-02](impl/database/iteration-02-schema-er/summary.md) |
+| [iter-db-03](#iter-db-03-adr-и-практическая-справка-по-миграциям-доступу) | ADR и практическая справка по миграциям/доступу | ✅ done | iter-db-02* | [ADR-004](../tech/adr/adr-004-database-migrations-workflow.md), [database-migrations.md](../tech/database-migrations.md), реестр ADR |
+| [iter-db-04](#iter-db-04-инфраструктура-бд-seed-команды) | Инфраструктура БД, seed, команды | ✅ done | iter-db-03 | [docker-compose.yml](../../docker-compose.yml), [Makefile](../../Makefile), `backend/alembic/versions/`, seed, README |
+| [iter-db-05](#iter-db-05-orm-репозитории-интеграция-backend) | ORM, репозитории, интеграция backend | ✅ done | iter-db-04 | [`backend/src/pereobuyka/db/`](../../backend/src/pereobuyka/db/), [`postgres_repos.py`](../../backend/src/pereobuyka/storage/postgres_repos.py), pytest + **Testcontainers** |
 
 \*Схема в `data-model.md` может уточняться параллельно с ADR; миграции не стартуют без зафиксированной целевой физической модели.
 
@@ -68,7 +68,7 @@
 
 ## Итерации
 
-### iter-db-01 — User scenarios (сценарии и требования к данным)
+### iter-db-01 — Сценарии и требования к данным
 
 **Шаг дорожной карты:** 1 (продуктовый фундамент под данные)
 
@@ -113,7 +113,7 @@
 
 ---
 
-### iter-db-02 — Schema & ER (логическая и физическая модель)
+### iter-db-02 — Логическая и физическая модель + ER
 
 **Шаг дорожной карты:** 1
 
@@ -158,7 +158,7 @@
 
 ---
 
-### iter-db-03 — Migrations & access (ADR и практическая справка)
+### iter-db-03 — ADR и практическая справка по миграциям/доступу
 
 **Шаг дорожной карты:** 1
 
@@ -202,7 +202,7 @@
 
 ---
 
-### iter-db-04 — Infra (локальный PostgreSQL, миграции, seed, проверка)
+### iter-db-04 — Инфраструктура БД, seed, команды
 
 **Шаг дорожной карты:** 1
 
@@ -248,7 +248,7 @@
 
 ---
 
-### iter-db-05 — ORM, repos, backend (замена in-memory)
+### iter-db-05 — ORM, репозитории, интеграция backend
 
 **Шаг дорожной карты:** 1
 

@@ -57,9 +57,28 @@ async def get_current_user(
             return uuid.uuid5(_TELEGRAM_USER_NS, f"telegram:{x_telegram_user_id}")
         return uuid.uuid5(_TELEGRAM_USER_NS, "bot")
 
+    admin_tok = (settings.admin_api_token or "").strip()
+    if admin_tok and raw == admin_tok:
+        return settings.admin_actor_user_id
+
     # TODO(auth-tasklist): реализовать проверку JWT / Telegram initData
     raise HTTPException(
         status_code=HTTP_401_UNAUTHORIZED,
         detail={"error": {"code": "UNAUTHORIZED", "message": "Авторизация не реализована"}},
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+
+async def get_consultation_appointment_source(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> str:
+    """Источник записи из инструмента консультанта.
+
+    Если в Authorization передан ``BOT_SECRET`` — ``telegram_bot``, иначе ``web``.
+    """
+    if credentials is None:
+        return "web"
+    secret = (get_settings().bot_secret or "").strip()
+    if secret and credentials.credentials == secret:
+        return "telegram_bot"
+    return "web"

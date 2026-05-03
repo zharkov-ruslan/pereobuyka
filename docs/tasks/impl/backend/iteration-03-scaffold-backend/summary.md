@@ -1,4 +1,4 @@
-# iter-03 — Каркас backend: итоги
+# iter-be-03 — Каркас backend: итоги
 
 ## Что реализовано
 
@@ -18,12 +18,12 @@
 ## Принятые решения
 
 - `GET /health` размещён на корневом уровне (`/health`), а не под `/api/v1/` — стандартная практика для infrastructure-эндпоинтов без авторизации.
-- SQLAlchemy, asyncpg, alembic добавлены в зависимости уже сейчас (по ADR-003), хотя в iter-03 не используются — избегает повторной правки `pyproject.toml` в iter-05.
+- SQLAlchemy, asyncpg, alembic добавлены в зависимости уже сейчас (по ADR-003), хотя в iter-be-03 не используются — избегает повторной правки `pyproject.toml` в iter-be-05.
 - `config.py` использует `pydantic-settings` v2 (`SettingsConfigDict`); `DATABASE_URL` имеет дефолт `sqlite+aiosqlite:///./dev.db` только для dev.
 
 ## Связь с tasklist
 
-Состав работ и артефакты соответствуют разделу **iter-03** в [`tasklist-backend.md`](../../../tasklist-backend.md).
+Состав работ и артефакты соответствуют разделу **iter-be-03** в [`tasklist-backend.md`](../../../tasklist-backend.md).
 
 ## Проверка
 

@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, cast
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from pereobuyka.config import get_settings
+from pereobuyka.db.models import Appointment
 from pereobuyka.llm.openrouter_client import OpenRouterChatClient
 from pereobuyka.services.consultation_orchestrator import (
     _parse_starts_at_for_consultation_tool,
@@ -79,11 +81,12 @@ async def test_run_consultation_create_appointment_tool(
         async with factory() as session:
             assert isinstance(session, AsyncSession)
 
-            day = date.fromisoformat("2026-04-20")
+            d0 = date.today() + timedelta(days=1)
+            d1 = d0 + timedelta(days=30)
             before = await get_free_slots(
                 session,
-                date_from=day,
-                date_to=day,
+                date_from=d0,
+                date_to=d1,
                 service_ids=[DEFAULT_SERVICE_ID],
             )
             assert before
@@ -103,23 +106,34 @@ async def test_run_consultation_create_appointment_tool(
                 ]
             )
 
+            user_id = uuid4()
             result = await run_consultation(
                 settings=get_settings(),
                 session=session,
-                user_id=uuid4(),
+                user_id=user_id,
                 message="Запишите меня",
                 request_id=uuid4(),
                 llm_client=cast(OpenRouterChatClient, fake_llm),
+                appointment_source="telegram_bot",
             )
             await session.commit()
 
         assert "запись" in result.reply.lower()
 
         async with factory() as session:
+            stmt = (
+                select(Appointment)
+                .where(Appointment.user_id == user_id)
+                .order_by(Appointment.created_at.desc())
+                .limit(1)
+            )
+            ap_row = (await session.execute(stmt)).scalar_one()
+            assert ap_row.source == "telegram_bot"
+
             after = await get_free_slots(
                 session,
-                date_from=day,
-                date_to=day,
+                date_from=d0,
+                date_to=d1,
                 service_ids=[DEFAULT_SERVICE_ID],
             )
             starts_at_list = [w.starts_at.isoformat(timespec="minutes") for w in after]

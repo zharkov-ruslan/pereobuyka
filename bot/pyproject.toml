@@ -8,6 +8,8 @@ dependencies = [
   "aiogram>=3.0.0",
   "httpx>=0.27.0",
   "python-dotenv>=1.0.0",
+  # IANA TZ для zoneinfo на Windows (иначе ZoneInfo(\"Europe/Moscow\") падает без системной базы)
+  "tzdata>=2024.1",
 ]
 
 [project.scripts]

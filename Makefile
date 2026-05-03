@@ -1,4 +1,5 @@
 .PHONY: install run backend-install backend-run backend-stop backend-test backend-lint bot-install bot-run bot-stop bot-test bot-lint
+.PHONY: web-install web-dev web-lint web-build
 .PHONY: db-up db-down db-reset db-migrate db-seed db-psql
 
 # Удобные алиасы для бота (корневого pyproject больше нет)
@@ -39,6 +40,20 @@ bot-test:
 
 bot-lint:
 	cd bot && uv run --group dev ruff check src/ && uv run --group dev ruff format --check src/ && uv run --group dev mypy src/pereobuyka
+
+# ── Web ──────────────────────────────────────────────────────────────────────
+
+web-install:
+	cd web && pnpm install
+
+web-dev:
+	cd web && pnpm dev
+
+web-lint:
+	cd web && pnpm lint
+
+web-build:
+	cd web && pnpm build
 
 # ── Локальная PostgreSQL (iter-db-04; см. backend/README.md) ───────────────
 # Фиксированное имя проекта: на Windows при пути с кириллицей иначе бывает «project name must not be empty».

@@ -1,12 +1,12 @@
-# iter-05 — Impl endpoints: итоги
+# iter-be-05 — Impl endpoints: итоги
 
-Итерация в два слоя: **(A)** формализация базового среза и каталог услуг; **(B)** закрытие этапа 1 по backend — полный набор маршрутов для PostgreSQL, репозитории и сервисы (см. [`tasklist-backend.md`](../../../tasklist-backend.md), раздел iter-05).
+Итерация в два слоя: **(A)** формализация базового среза и каталог услуг; **(B)** закрытие этапа 1 по backend — полный набор маршрутов для PostgreSQL, репозитории и сервисы (см. [`tasklist-backend.md`](../../../tasklist-backend.md), раздел iter-be-05).
 
 ## A. Базовая волна (исходный scope плана)
 
 ### Формализация временного слоя хранилища
 
-In-memory зафиксирован как явный временный слой до полноценной работы только через БД. Комментарии `# iter-05: заменить на реальный storage` убраны; в docstring — явная пометка о роли слоя.
+In-memory зафиксирован как явный временный слой до полноценной работы только через БД. Комментарии `# iter-be-05: заменить на реальный storage` убраны; в docstring — явная пометка о роли слоя.
 
 Затронутые файлы: `storage/memory.py`, `services/slot_service.py`, `services/appointment_service.py`.
 
@@ -16,7 +16,7 @@ In-memory зафиксирован как явный временный слой
 
 ### GET /api/v1/services — каталог услуг
 
-- Роут: `GET /api/v1/services` (сценарий **Клиент 3** iter-02)
+- Роут: `GET /api/v1/services` (сценарий **Клиент 3** iter-be-02)
 - Ответ: `ServiceListResponse { items: ServiceItem[] }`; активные услуги; при полном режиме PG — также поля вроде `description` по контракту
 
 Схемы в `api/v1/schemas.py`: `ServiceItem`, `ServiceListResponse` (и расширения под OpenAPI по мере этапа 1).

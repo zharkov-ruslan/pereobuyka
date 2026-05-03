@@ -57,6 +57,22 @@
 
 ---
 
+### Облачный speech-to-text (STT) для голоса в бота
+
+Решение и провайдеры: [ADR-005](adr/adr-005-speech-to-text.md).
+
+
+| Параметр    | Значение |
+| ----------- | -------- |
+| Назначение  | Распознавание голосовых сообщений Telegram в текст перед вызовом LLM-консультации |
+| Направление | Out: backend пересылает аудио провайдеру STT → получает текст |
+| Протокол    | По умолчанию **OpenRouter** — `POST …/audio/transcriptions`, JSON + base64 ([документация STT](https://openrouter.ai/docs/api/api-reference/stt/create-audio-transcriptions)); опционально **openai_multipart** для прямого OpenAI-совместимого multipart |
+| Критичность | **Опционально** — без настроенного STT голос в боте недоступен, текст работает |
+
+Для STT (голос в Telegram): **`SPEECH_TO_TEXT_PROVIDER`**, **`SPEECH_TO_TEXT_API_KEY`**, **`SPEECH_TO_TEXT_BASE_URL`** (для OpenRouter обычно совпадает с **`OPENROUTER_BASE_URL`**; пусто — подставляется из **`OPENROUTER_BASE_URL`**), **`SPEECH_TO_TEXT_MODEL`**. Ключ **`OPENROUTER_API_KEY`** — **только** для LLM-консультации. Режим `openai_multipart`: те же три `SPEECH_TO_TEXT_*`, база часто `https://api.openai.com/v1`, модель часто `whisper-1`.
+
+---
+
 ### Платёжный сервис *(планируется)*
 
 *Конкретный провайдер не выбран: ЮKassa, Tinkoff и др.*

@@ -26,3 +26,5 @@ ADR — короткие документы, фиксирующие архите
 | [ADR-002](adr-002-backend-framework.md) | HTTP-фреймворк backend (FastAPI) | Accepted |
 | [ADR-003](adr-003-orm.md) | ORM и миграции (SQLAlchemy 2 async, Alembic) | Accepted |
 | [ADR-004](adr-004-database-migrations-workflow.md) | Workflow миграций Alembic в `backend/` | Accepted |
+| [ADR-005](adr-005-speech-to-text.md) | Серверный STT для голосовых консультаций (Telegram) | Accepted |
+| [ADR-006](adr-006-text-to-sql.md) | Админские вопросы к БД: NL→SQL с валидацией AST и белым списком таблиц | Accepted |

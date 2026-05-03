@@ -12,8 +12,8 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pereobuyka.api.v1.schemas import AppointmentCreateRequest, ServiceLineItem, SlotWindow
-from pereobuyka.config import Settings, get_settings
+from pereobuyka.api.v1.schemas import AppointmentCreateRequest, ServiceLineItem
+from pereobuyka.config import Settings
 from pereobuyka.llm.errors import ConsultationOrchestrationError
 from pereobuyka.llm.openrouter_client import OpenRouterChatClient
 from pereobuyka.llm.system_prompt import DEFAULT_SYSTEM_PROMPT
@@ -47,6 +47,7 @@ def _parse_starts_at_for_consultation_tool(raw: str) -> datetime:
     if dt.tzinfo is not None:
         return dt.replace(tzinfo=None)
     return dt
+
 
 _TOOLS: list[dict[str, Any]] = [
     {
@@ -142,23 +143,6 @@ def _clock_block(settings: Settings) -> str:
     )
 
 
-def _drop_past_slot_windows(windows: list[SlotWindow], tz_name: str) -> list[SlotWindow]:
-    """Окна, которые уже начались или прошли в бизнес-часовом поясе, отбрасываем."""
-    name = (tz_name or "Europe/Moscow").strip() or "Europe/Moscow"
-    try:
-        tz = ZoneInfo(name)
-    except Exception:
-        tz = ZoneInfo("UTC")
-    now = datetime.now(tz)
-    out: list[SlotWindow] = []
-    for w in windows:
-        s = w.starts_at
-        s_aware = s.replace(tzinfo=tz) if s.tzinfo is None else s.astimezone(tz)
-        if s_aware > now:
-            out.append(w)
-    return out
-
-
 async def _client_facts_block(*, session: AsyncSession | None, user_id: UUID) -> str:
     if session is None:
         return (
@@ -221,8 +205,6 @@ async def _tool_list_slots(
         }
 
     slots = await get_free_slots(session, d0, d1, service_ids)
-    cfg = get_settings()
-    slots = _drop_past_slot_windows(slots, cfg.consultation_business_timezone)
     # Ограничиваем размер ответа, чтобы не раздувать контекст
     cap = 40
     trimmed = slots[:cap]
@@ -244,6 +226,8 @@ async def _tool_create_appointment(
     session: AsyncSession | None,
     user_id: UUID,
     args: dict[str, Any],
+    *,
+    appointment_source: str,
 ) -> dict[str, Any]:
     try:
         try:
@@ -270,7 +254,7 @@ async def _tool_create_appointment(
         req = AppointmentCreateRequest(
             starts_at=starts_at, service_items=items, bonus_spend=bonus_spend
         )
-        appt = await create_appointment(session, user_id, req)
+        appt = await create_appointment(session, user_id, req, source=appointment_source)
         return {
             "ok": True,
             "appointment": {
@@ -310,6 +294,7 @@ async def _dispatch_tool(
     arguments_json: str,
     session: AsyncSession | None,
     user_id: UUID,
+    appointment_source: str,
 ) -> str:
     try:
         args = json.loads(arguments_json or "{}")
@@ -328,7 +313,9 @@ async def _dispatch_tool(
     elif name == "list_slots":
         payload = await _tool_list_slots(session, args)
     elif name == "create_appointment":
-        payload = await _tool_create_appointment(session, user_id, args)
+        payload = await _tool_create_appointment(
+            session, user_id, args, appointment_source=appointment_source
+        )
     else:
         payload = {"ok": False, "error": {"code": "UNKNOWN_TOOL", "message": name}}
 
@@ -344,6 +331,7 @@ async def run_consultation(
     request_id: UUID,
     llm_client: OpenRouterChatClient,
     history: list[dict[str, str]] | None = None,
+    appointment_source: str = "web",
 ) -> ConsultationResult:
     """Один пользовательский запрос: LLM + до N раундов tool-calls."""
     _ = request_id  # зарезервировано для логов/трейсинга
@@ -393,6 +381,7 @@ async def run_consultation(
                     arguments_json=tc.function.arguments or "{}",
                     session=session,
                     user_id=user_id,
+                    appointment_source=appointment_source,
                 )
                 messages.append({"role": "tool", "tool_call_id": tc.id, "content": output})
             continue

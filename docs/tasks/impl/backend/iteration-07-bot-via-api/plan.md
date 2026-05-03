@@ -1,4 +1,4 @@
-# iter-07 — Bot via API: план реализации
+# iter-be-07 — Bot via API: план реализации
 
 ## Цель
 

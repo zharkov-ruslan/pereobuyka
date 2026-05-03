@@ -97,7 +97,8 @@ async def confirm_visit_postgres(
     bonus_spent_req = body.bonus_spent
     if bonus_spent_req < 0:
         raise HTTPException(
-            status_code=422, detail={"error": {"code": "VALIDATION", "message": "bonus_spent < 0"}}
+            status_code=422,
+            detail={"error": {"code": "VALIDATION_ERROR", "message": "bonus_spent < 0"}},
         )
 
     account = await _get_or_create_bonus_account(session, appt.user_id)
@@ -179,6 +180,10 @@ async def confirm_visit_postgres(
         confirmed_at=_as_utc_naive(confirmed_at),
         confirmed_by_user_id=admin_user_id,
         lines=body.lines,
+        client_rating_stars=None,
+        client_rating_comment=None,
+        service_rating_stars=None,
+        service_rating_comment=None,
     )
 
 

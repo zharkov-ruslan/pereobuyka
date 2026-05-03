@@ -6,12 +6,14 @@ from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from typing import Literal, cast
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from pereobuyka.config import get_settings
 from pereobuyka.db.models import (
     Appointment,
     AppointmentLine,
@@ -33,6 +35,7 @@ async def ensure_user_exists(session: AsyncSession, user_id: UUID) -> None:
             phone=None,
             role="client",
             telegram_id=None,
+            telegram_username=None,
             registered_at=datetime.now(UTC),
             source="web",
         )
@@ -133,6 +136,9 @@ async def insert_appointment(
     status: str,
     created_at: datetime,
     service_items: list[ServiceLineItemDict],
+    source: str = "web",
+    discount_percent: int = 0,
+    created_by_user_id: UUID | None = None,
 ) -> None:
     await ensure_user_exists(session, user_id)
     starts = _ensure_aware_utc(starts_at)
@@ -146,6 +152,9 @@ async def insert_appointment(
         total_price=total_price,
         status=status,
         created_at=created,
+        source=source,
+        discount_percent=discount_percent,
+        created_by_user_id=created_by_user_id,
     )
     session.add(ap)
     await session.flush()
@@ -161,6 +170,12 @@ async def insert_appointment(
 
 
 def _ensure_aware_utc(dt: datetime) -> datetime:
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=UTC)
-    return dt.astimezone(UTC)
+    """Наивные часы в API — стена времени в зоне `consultation_business_timezone`."""
+    if dt.tzinfo is not None:
+        return dt.astimezone(UTC)
+    tz_name = get_settings().consultation_business_timezone
+    try:
+        tz = ZoneInfo((tz_name or "Europe/Moscow").strip() or "Europe/Moscow")
+    except Exception:
+        tz = UTC
+    return dt.replace(tzinfo=tz).astimezone(UTC)

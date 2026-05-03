@@ -26,6 +26,7 @@
 | Метод | Путь | Описание | Успех |
 |-------|------|----------|-------|
 | POST | `/api/v1/auth/telegram` | Вход / регистрация через Telegram (upsert пользователя), выдача JWT. | 200 / 201 |
+| POST | `/api/v1/auth/web` | Вход клиента в веб по `telegram_username` (MVP), выдача JWT. | 200 / 201 |
 
 <span id="post-auth-telegram"></span>
 
@@ -75,15 +76,49 @@
 }
 ```
 
-**Ответ `422`** (невалидные данные):
+**Ответ `422`** (невалидные данные тела / query по правилам OpenAPI):
 
 ```json
 {
-  "error": "validation_error",
-  "message": "Request validation failed",
-  "details": [{"field": "telegram_id", "message": "field required"}]
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Ошибка проверки данных запроса",
+    "details": {
+      "fields": [
+        { "field": "telegram_id", "message": "field required" }
+      ]
+    }
+  }
 }
 ```
+
+Форма `details` может различаться по эндпоинту; стабильны **обёртка `error`** и поля **`code`** / **`message`** (см. [errors.md](errors.md)).
+
+<span id="post-auth-web"></span>
+
+### POST `/api/v1/auth/web`
+
+**Описание:** Вход клиента в веб по нормализованному Telegram username (`@name` или `name` с латиницей и подчёркиваниями). Если пользователя нет — создание клиента (`source`: `web`). Контракт аналогичен `POST /auth/telegram` по полям ответа `TokenResponse`; в объекте `user` добавлено поле `telegram_username`.
+
+**Заголовки:**
+
+| Заголовок | Значение | Обязательный |
+|---|---|---|
+| `Content-Type` | `application/json` | да |
+
+**Параметры:** —
+
+**Запрос:**
+
+```json
+{
+  "telegram_username": "anna_demo",
+  "name": null,
+  "phone": null
+}
+```
+
+**Ответ `200` / `201`:** как у `POST /auth/telegram`, с полем `"telegram_username"` у `user`.
 
 ---
 
@@ -197,6 +232,7 @@ GET /api/v1/slots?date_from=2026-04-20&date_to=2026-04-22&service_ids=22222222-2
 | GET | `/api/v1/me/visits` | История подтверждённых визитов с пагинацией. | 200 |
 | GET | `/api/v1/me/bonus-account` | Текущий баланс бонусного счёта клиента. | 200 |
 | GET | `/api/v1/me/bonus-transactions` | История бонусных операций с пагинацией. | 200 |
+| POST | `/api/v1/me/visits/{visit_id}/service-rating` | Оценка качества сервиса клиентом после визита (звёзды и опциональный комментарий). | 200 |
 
 <span id="get-me"></span>
 
@@ -232,7 +268,7 @@ GET /api/v1/slots?date_from=2026-04-20&date_to=2026-04-22&service_ids=22222222-2
 
 ### POST `/api/v1/appointments`
 
-**Описание:** Создание записи на выбранное время и перечень услуг (опционально списание бонусов).
+**Описание:** Создание записи на выбранное время и перечень услуг (опционально списание бонусов). Поле **`starts_at`** должно быть **строго в будущем** относительно текущего момента на сервере (UTC); иначе ответ **422** с телом вида `{"error":{"code":"STARTS_AT_IN_PAST","message":"Нельзя создать запись на прошедшее время"}}` (см. [errors.md](errors.md)).
 
 **Заголовки:**
 
@@ -276,21 +312,25 @@ GET /api/v1/slots?date_from=2026-04-20&date_to=2026-04-22&service_ids=22222222-2
 
 ```json
 {
-  "error": "slot_conflict",
-  "message": "Requested time slot is not available",
-  "details": {"starts_at": "2026-04-20T10:00:00+03:00"}
+  "error": {
+    "code": "SLOT_NOT_AVAILABLE",
+    "message": "Выбранный слот уже занят"
+  }
 }
 ```
 
-**Ответ `422`** (невалидные данные):
+**Ответ `422`** (невалидные данные или слот в прошлом):
 
 ```json
 {
-  "error": "validation_error",
-  "message": "Request validation failed",
-  "details": [{"field": "starts_at", "message": "field required"}]
+  "error": {
+    "code": "STARTS_AT_IN_PAST",
+    "message": "Нельзя создать запись на прошедшее время"
+  }
 }
 ```
+
+Для ошибок валидации тела/параметров (в т.ч. отсутствующие поля, неверные типы) используется **422** с той же обёрткой **`error`**: `code`, `message`, опционально **`details`** (см. [errors.md](errors.md)).
 
 <span id="get-me-appointments"></span>
 
@@ -504,6 +544,8 @@ Content-Type: application/json
 | Метод | Путь | Описание | Успех |
 |-------|------|----------|-------|
 | POST | `/api/v1/consultation/messages` | Отправка сообщения в LLM-консультацию; сервер подмешивает контекст (прайс, слоты, бонусы, FAQ). | 200 |
+| POST | `/api/v1/consultation/transcribe` | Распознавание короткого аудио (multipart `file`) в текст через внешний STT; для голосовых в Telegram. Провайдер и env: [ADR-005](../adr/adr-005-speech-to-text.md) (`SPEECH_TO_TEXT_PROVIDER`, `SPEECH_TO_TEXT_API_KEY`, `SPEECH_TO_TEXT_BASE_URL`, `SPEECH_TO_TEXT_MODEL`). | 200 |
+| GET | `/api/v1/consultation/messages` | История сообщений консультации (пагинация `limit`/`offset`) для виджета чата. | 200 |
 
 <span id="post-consultation-messages"></span>
 
@@ -537,11 +579,100 @@ Content-Type: application/json
 }
 ```
 
+<span id="post-consultation-transcribe"></span>
+
+### POST `/api/v1/consultation/transcribe`
+
+**Описание:** серверная транскрипция аудио (голосовые из Telegram и др.) в текст. Провайдер задаётся конфигурацией (по умолчанию OpenRouter STT, см. [ADR-005](../adr/adr-005-speech-to-text.md)). При отсутствии ключей для выбранного провайдера — ответ `503` с `SERVICE_UNAVAILABLE`. **Сырой звук в логи не пишется.**
+
+**Заголовки:** `Authorization: Bearer <токен>` (как у остальной консультации: JWT веба или секрет бота + `X-Telegram-User-Id`).
+
+**Тело:** `multipart/form-data`, поле **`file`** — бинарный аудиофайл (OGG/Opus и др., в пределах лимита провайдера).
+
+**Ответ `200`:** `{ "text": "…" }`.
+
+<span id="get-consultation-messages"></span>
+
+### GET `/api/v1/consultation/messages`
+
+**Описание:** Постраничная история сохранённых сообщений консультации для текущего пользователя (`role`: `user` \| `assistant`).
+
+**Заголовки:**
+
+| Заголовок | Значение | Обязательный |
+|---|---|---|
+| `Authorization` | `Bearer <JWT>` | да |
+
+**Параметры:**
+
+| Параметр | Расположение | Тип | Обязательный | Описание |
+|---|---|---|---|---|
+| `limit` | query | int | нет | По умолч. 50, макс. 100. |
+| `offset` | query | int | нет | По умолч. 0. |
+
+**Ответ `200`:** объект с полями `items` (массив сообщений с `id`, `role`, `content`, `created_at`, `request_id`) и `total`.
+
 ---
 
 ## Admin (Bearer, роль admin)
 
 Во всех запросах ниже требуется заголовок `Authorization: Bearer <JWT>` (токен администратора).
+
+### Веб-панель (дашборд, клиенты, правки записей и визитов)
+
+| Метод | Путь | Описание | Успех |
+|-------|------|----------|-------|
+| GET | `/api/v1/admin/dashboard/today` | KPI на календарный «сегодня» в TZ бизнеса; записи/отмены/источники по **пересечению** слота с днём (как в сетке). | 200 |
+| GET | `/api/v1/admin/dashboard/week-grid` | Сетка недели от `week_start` (понедельник): слоты и события; у события визита — `client_rating_*` при наличии. | 200 |
+| GET | `/api/v1/admin/analytics/week` | Агрегаты по дням недели и топ услуг для графиков. | 200 |
+| POST | `/api/v1/admin/analytics/data-insight` | Вопрос администратора на естественном языке: безопасный SELECT по whitelist таблиц и резюме (OpenRouter). Политика: [ADR-006](../adr/adr-006-text-to-sql.md). Нужен `OPENROUTER_API_KEY`. | 200 |
+| GET | `/api/v1/admin/clients` | Список клиентов с KPI (потрачено, бонусы, средняя оценка). | 200 |
+| GET | `/api/v1/admin/clients/{user_id}` | Профиль клиента для карточки (как в списке). | 200 |
+| GET | `/api/v1/admin/users/{user_id}/appointments` | Журнал записей выбранного пользователя (расширенная модель с `user`). | 200 |
+| GET | `/api/v1/admin/users/{user_id}/visits` | Журнал подтверждённых визитов выбранного пользователя. | 200 |
+| POST | `/api/v1/admin/appointments` | Создание записи клиенту (`source=admin`); `starts_at` не в прошлом (см. `STARTS_AT_IN_PAST`). | 201 |
+| PATCH | `/api/v1/admin/appointments/{appointment_id}` | Изменение статуса, строк услуг, скидки, источника записи. | 200 |
+| PATCH | `/api/v1/admin/visits/{visit_id}` | Корректировка строк визита, суммы, начисленных бонусов. | 200 |
+| POST | `/api/v1/admin/visits/{visit_id}/client-rating` | Выставление или изменение админской оценки клиента после визита. | 200 |
+
+`AdminClientRow` для списка и карточки клиента содержит `user_id`, `name`, `phone`, `telegram_id`, `telegram_username`, `visits_count`, `total_spent`, `bonus_balance`, `rating_avg`.
+
+#### GET `/api/v1/admin/dashboard/today`
+
+**Ответ `200`:** `DashboardTodayResponse` (см. [openapi.yaml](openapi.yaml) → `DashboardTodayResponse`).
+
+Семантика полей:
+
+- **`date`** — календарная дата «сегодня» в `consultation_business_timezone` (настройка сервера).
+- **`appointments_total`** — число записей, у которых интервал `[starts_at, ends_at)` **пересекается** с локальным днём `[00:00; 24:00)` этой даты (то же правило, по которому событие может попасть в колонку дня в сетке недели), **любой** статус.
+- **`cancellations_total`** — из них записи в статусе `cancelled` с тем же правилом пересечения.
+- **`bookings_scheduled_today_by_source`** — разбивка по `Appointment.source` для записей в статусах **`scheduled`**, **`completed`** и **`cancelled`** за этот же календарный день (пересечение); в ответе — счётчики по ключам `admin`, `web`, `llm`, `telegram_bot` (неизвестный source может быть отнесён к `web` на сервере).
+- **`visits_total`** — визиты с `confirmed_at`, попадающим в этот локальный день (отдельная ось «факт подтверждения»).
+- **`consultation_user_messages_last_7_days`** — без изменений (окно от текущего момента UTC).
+
+#### GET `/api/v1/admin/dashboard/week-grid`
+
+Параметр query: **`week_start`** (date, понедельник недели).
+
+В каждом элементе `events[]` внутри слота объект **`WeekGridEvent`** включает опциональные **`client_rating_stars`** (1–5) и **`client_rating_comment`** для подтверждённого визита (`state=completed`), если оценка уже сохранена.
+
+#### POST `/api/v1/admin/analytics/data-insight`
+
+**Тело:** `{ "question": "<строка 1–2000 символов>" }`.
+
+**Успех `200`:** `AdminDataInsightResponse`: `summary`, `sql_executed` (обёрнутый запрос с лимитом строк), `columns`, `rows` (массив объектов; типы ячеек — строки/числа/null по факту SQL), `truncated`.
+
+**Ошибки:** **503** `SERVICE_UNAVAILABLE` — нет ключа LLM или сбой провайдера / некорректный ответ модели; **400** `NL_SQL_REJECTED` — запрос не прошёл проверку безопасности или ошибка выполнения после проверки.
+
+Аудит SQL и вопроса — в серверных логах (без секретов).
+
+#### POST `/api/v1/admin/appointments`
+
+**Описание:** создание записи из админ-панели на выбранного клиента; в БД `source` = `admin`. Тело — `AdminAppointmentCreateBody`: `user_id`, `starts_at`, `service_items`, опционально `discount_percent` (0–100).
+
+Требование **`starts_at`**: момент начала не раньше текущего времени на сервере (UTC); иначе **422** с `error.code`: **`STARTS_AT_IN_PAST`** (как у `POST /api/v1/appointments`).
+
+**Успех `201`:** тело в формате `Appointment` (как у клиентского создания записи).
 
 ### Услуги
 
@@ -1298,15 +1429,22 @@ Authorization: Bearer <JWT>
 
 | Раздел документа | Количество методов |
 |------------------|-------------------:|
-| Auth (без Bearer) | 1 |
+| Auth (без Bearer) | 2 |
 | Public (без Bearer) | 3 |
-| Client (Bearer, клиент) | 7 |
-| Consultation (Bearer, клиент) | 1 |
+| Client (Bearer, клиент) | 8 |
+| Consultation (Bearer, клиент) | 2 |
+| Admin — веб-панель (дашборд, клиенты, правки) | 9 |
 | Admin — услуги | 5 |
 | Admin — расписание: правила (`schedule/rules`) | 5 |
 | Admin — расписание: исключения (`schedule/exceptions`) | 5 |
 | Admin — журнал записей и подтверждение визитов | 2 |
 | Admin — бонусный счёт и корректировки | 2 |
-| **Итого** | **31** |
+| **Итого** | **43** |
 
-По HTTP-глаголам (по тем же строкам таблиц): **GET** — 16, **POST** — 8, **PATCH** — 4, **DELETE** — 3.
+По HTTP-глаголам (по тем же строкам таблиц): **GET** — 23, **POST** — 10, **PATCH** — 6, **DELETE** — 3.
+
+---
+
+## Расширения iter-fe-01
+
+Маршруты из черновика iter-fe-00 перенесены в сводные таблицы выше; детали экранов — [`docs/tasks/impl/frontend/iteration-0-ui-api-spec/summary.md`](../../tasks/impl/frontend/iteration-0-ui-api-spec/summary.md), факт реализации — [`docs/tasks/impl/frontend/iteration-1-backend-api-seed/summary.md`](../../tasks/impl/frontend/iteration-1-backend-api-seed/summary.md).

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_409_CONFLICT, HTTP_422_UNPROCESSABLE_CONTENT
 
 from pereobuyka.api.v1.schemas import Appointment, AppointmentCreateRequest, AppointmentStatus
+from pereobuyka.config import get_settings
 from pereobuyka.storage.memory import (
     AppointmentRecord,
     ServiceLineItemDict,
@@ -23,7 +24,22 @@ from pereobuyka.storage.postgres_repos import (
     insert_appointment,
     list_appointments_non_cancelled,
 )
-from pereobuyka.utils import overlaps
+from pereobuyka.utils import overlaps, to_utc_aware, to_utc_naive_overlap
+
+
+def ensure_starts_at_not_in_past(starts_at: datetime) -> None:
+    """Запретить прошедший момент: наивное время — в бизнес-поясе из настроек."""
+    st_utc = to_utc_aware(starts_at, get_settings().consultation_business_timezone)
+    if st_utc < datetime.now(UTC):
+        raise HTTPException(
+            status_code=HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "error": {
+                    "code": "STARTS_AT_IN_PAST",
+                    "message": "Нельзя создать запись на прошедшее время",
+                }
+            },
+        )
 
 
 def _normalize_naive_utc(dt: datetime) -> datetime:
@@ -36,6 +52,8 @@ async def create_appointment(
     session: AsyncSession | None,
     user_id: UUID,
     request: AppointmentCreateRequest,
+    *,
+    source: str = "web",
 ) -> Appointment:
     """Создать запись: PostgreSQL при переданной сессии, иначе in-memory (SQLite dev)."""
     if session is not None:
@@ -57,6 +75,8 @@ async def create_appointment(
                 },
             )
 
+    ensure_starts_at_not_in_past(request.starts_at)
+
     total_minutes = sum(
         services[item.service_id].duration_minutes * item.quantity for item in request.service_items
     )
@@ -68,11 +88,16 @@ async def create_appointment(
     ends_at = request.starts_at + timedelta(minutes=total_minutes)
     slot_st = _normalize_naive_utc(request.starts_at)
     slot_e = _normalize_naive_utc(ends_at)
+    tz_name = get_settings().consultation_business_timezone
+    slot_st_cmp, slot_e_cmp = (
+        to_utc_naive_overlap(request.starts_at, tz_name),
+        to_utc_naive_overlap(ends_at, tz_name),
+    )
 
     if any(
         overlaps(
-            slot_st,
-            slot_e,
+            slot_st_cmp,
+            slot_e_cmp,
             _normalize_naive_utc(a.starts_at),
             _normalize_naive_utc(a.ends_at),
         )
@@ -106,6 +131,7 @@ async def create_appointment(
             status="scheduled",
             created_at=now,
             service_items=items,
+            source=source,
         )
     else:
         record = AppointmentRecord(

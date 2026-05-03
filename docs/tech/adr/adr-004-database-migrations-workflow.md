@@ -61,7 +61,7 @@
 
 ## Последствия
 
-- Появление `alembic.ini` и `alembic/` в **`backend/`** — в рамках [iter-db-04](../../tasks/tasklist-database.md#iter-db-04--infra-локальный-postgresql-migrations-seed) (инфраструктура) и [iter-db-05](../../tasks/tasklist-database.md#iter-db-05--orm-repos-backend-замена-in-memory) (модели и первая ревизия).
+- Появление `alembic.ini` и `alembic/` в **`backend/`** — в рамках [iter-db-04](../../tasks/tasklist-database.md#iter-db-04-инфраструктура-бд-seed-команды) (инфраструктура) и [iter-db-05](../../tasks/tasklist-database.md#iter-db-05-orm-репозитории-интеграция-backend) (модели и первая ревизия).
 - Документ с командами для разработчиков: [database-migrations.md](../database-migrations.md).
 - Интеграционные тесты с **Testcontainers** применяют миграции к поднятому Postgres — см. tasklist-database iter-db-05.
 

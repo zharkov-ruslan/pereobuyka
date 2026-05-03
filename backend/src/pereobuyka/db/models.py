@@ -33,6 +33,7 @@ class User(Base):
     phone: Mapped[str | None] = mapped_column(Text(), nullable=True)
     role: Mapped[str] = mapped_column(Text())
     telegram_id: Mapped[int | None] = mapped_column(BigInteger(), nullable=True)
+    telegram_username: Mapped[str | None] = mapped_column(Text(), nullable=True)
     registered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     source: Mapped[str] = mapped_column(Text())
 
@@ -99,6 +100,13 @@ class Appointment(Base):
     total_price: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     status: Mapped[str] = mapped_column(Text())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    source: Mapped[str] = mapped_column(Text(), server_default="web")
+    discount_percent: Mapped[int] = mapped_column(SmallInteger(), server_default="0")
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     lines: Mapped[list[AppointmentLine]] = relationship(
         back_populates="appointment",
@@ -123,6 +131,10 @@ class Visit(Base):
         PG_UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="RESTRICT"),
     )
+    client_rating_stars: Mapped[int | None] = mapped_column(SmallInteger(), nullable=True)
+    client_rating_comment: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    service_rating_stars: Mapped[int | None] = mapped_column(SmallInteger(), nullable=True)
+    service_rating_comment: Mapped[str | None] = mapped_column(Text(), nullable=True)
 
     lines: Mapped[list[VisitLine]] = relationship(back_populates="visit", lazy="selectin")
 
@@ -191,3 +203,17 @@ class FaqEntry(Base):
     question: Mapped[str] = mapped_column(Text())
     answer: Mapped[str] = mapped_column(Text())
     is_active: Mapped[bool] = mapped_column(Boolean(), server_default=sa.true())
+
+
+class ConsultationMessage(Base):
+    __tablename__ = "consultation_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+    )
+    role: Mapped[str] = mapped_column(Text())
+    content: Mapped[str] = mapped_column(Text())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    request_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)

@@ -363,6 +363,8 @@ erDiagram
 | FAQ | В текущем OpenAPI нет отдельных путей для CRUD FAQ — таблица `faq_entries` на будущее и для LLM; при появлении эндпоинтов схемы дополняются |
 | Консультации LLM | `request_id` в ответе — опционально отдельная таблица логов вне scope текущей схемы |
 
+**Черновик расширений под веб (iter-fe-00):** поля `telegram_username`, `appointment.source`, скидки/разнесённые суммы в записях и визитах, сущности оценок (клиент ↔ сервис), персистентная история сообщений консультации — см. [`docs/tasks/impl/frontend/iteration-0-ui-api-spec/summary.md`](../tasks/impl/frontend/iteration-0-ui-api-spec/summary.md) §5–6.
+
 Правки контрактов при реализации персистентного слоя — по мере необходимости в **iter-db-05** и отдельных задачах backend.
 
 Первая миграция Alembic (см. [ADR-004](adr/adr-004-database-migrations-workflow.md), [database-migrations.md](database-migrations.md)) должна воспроизвести перечисленные **`CHECK` по длине** в DDL вместе с остальными ограничениями таблиц.

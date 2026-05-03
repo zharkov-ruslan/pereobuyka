@@ -6,6 +6,7 @@ from pereobuyka.api.v1.schemas import (
     Appointment as AppointmentOut,
 )
 from pereobuyka.api.v1.schemas import (
+    AppointmentSource,
     AppointmentStatus,
     ServiceLineItem,
     ServiceOut,
@@ -45,6 +46,7 @@ def user_from_orm(row: UserRow) -> User:
         phone=row.phone,
         role=UserRole(row.role),
         telegram_id=row.telegram_id,
+        telegram_username=getattr(row, "telegram_username", None),
         registered_at=_as_utc_naive(row.registered_at),
         source=UserSource(row.source),
     )
@@ -56,6 +58,8 @@ def appointment_from_orm(ap: Appointment) -> AppointmentOut:
     items = [
         ServiceLineItem(service_id=line.service_id, quantity=line.quantity) for line in ap.lines
     ]
+    src = getattr(ap, "source", None) or "web"
+    disc = int(getattr(ap, "discount_percent", None) or 0)
     return AppointmentOut(
         id=ap.id,
         user_id=ap.user_id,
@@ -65,6 +69,8 @@ def appointment_from_orm(ap: Appointment) -> AppointmentOut:
         status=st,
         created_at=_as_utc_naive(ap.created_at),
         service_items=items,
+        source=AppointmentSource(src),
+        discount_percent=disc,
     )
 
 
@@ -116,4 +122,8 @@ def visit_from_orm(v: VisitRow) -> VisitOut:
         confirmed_at=_as_utc_naive(v.confirmed_at),
         confirmed_by_user_id=v.confirmed_by_user_id,
         lines=lines,
+        client_rating_stars=getattr(v, "client_rating_stars", None),
+        client_rating_comment=getattr(v, "client_rating_comment", None),
+        service_rating_stars=getattr(v, "service_rating_stars", None),
+        service_rating_comment=getattr(v, "service_rating_comment", None),
     )

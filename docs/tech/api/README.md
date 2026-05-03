@@ -4,7 +4,7 @@
 
 - Префикс версии: **`/api/v1`**
 - Формат данных: **JSON**, кодировка UTF-8
-- Идентификаторы в JSON: **UUID в строках** (см. [summary iter-02](../../tasks/impl/backend/iteration-02-api-contracts/summary.md) при расхождении с числовыми id в [`tech/data-model.md`](../data-model.md))
+- Идентификаторы в JSON: **UUID в строках** (см. [summary iter-be-02](../../tasks/impl/backend/iteration-02-api-contracts/summary.md) при расхождении с числовыми id в [`tech/data-model.md`](../data-model.md))
 
 Дополнительно:
 
@@ -14,4 +14,4 @@
 - Модель данных: [`tech/data-model.md`](../data-model.md)
 
 
-Просмотр в Swagger UI планируется после каркаса FastAPI (**iter-03**).
+Просмотр в Swagger UI планируется после каркаса FastAPI (**iter-be-03**).

@@ -3,33 +3,34 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
 
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+from pereobuyka.bot.display_datetime import format_api_datetime
 from pereobuyka.client.backend import BackendClient, BackendError, BackendUnavailableError
 
 logger = logging.getLogger(__name__)
+
+_APPOINTMENT_STATUS_RU: dict[str, str] = {
+    "scheduled": "Запланирована",
+    "completed": "Завершена",
+    "cancelled": "Отменена",
+}
+
+
+def _appointment_status_ru(raw: object) -> str:
+    key = str(raw).strip().lower() if raw is not None else ""
+    return _APPOINTMENT_STATUS_RU.get(key, key or "—")
 
 
 class CancelAppointmentCb(CallbackData, prefix="apcancel"):
     appointment_id: str
 
 
-def _format_time(raw_iso: str) -> str:
-    try:
-        value = datetime.fromisoformat(raw_iso.replace("Z", "+00:00"))
-    except ValueError:
-        return "—"
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=UTC)
-    return value.astimezone(UTC).strftime("%Y-%m-%d %H:%M")
-
-
-async def run_appointments_list(message: Message, backend: BackendClient) -> None:
+async def run_appointments_list(message: Message, backend: BackendClient, display_timezone: str) -> None:
     if message.from_user is None:
         return
     user_client = backend.for_user(message.from_user.id)
@@ -51,9 +52,10 @@ async def run_appointments_list(message: Message, backend: BackendClient) -> Non
     buttons: list[list[InlineKeyboardButton]] = []
     for item in appointments:
         appointment_id = str(item.get("id", ""))
-        starts_at = _format_time(str(item.get("starts_at", "")))
-        ends_at = _format_time(str(item.get("ends_at", "")))
-        lines.append(f"• {starts_at} - {ends_at}, статус: {item.get('status')}")
+        starts_at = format_api_datetime(str(item.get("starts_at", "")), display_timezone)
+        ends_at = format_api_datetime(str(item.get("ends_at", "")), display_timezone)
+        status_ru = _appointment_status_ru(item.get("status"))
+        lines.append(f"• {starts_at} – {ends_at}, статус: {status_ru}")
         if appointment_id:
             buttons.append(
                 [
@@ -69,12 +71,12 @@ async def run_appointments_list(message: Message, backend: BackendClient) -> Non
     )
 
 
-def build_router(backend: BackendClient) -> Router:
+def build_router(backend: BackendClient, display_timezone: str) -> Router:
     router = Router()
 
     @router.message(Command("appointments"))
     async def cmd_appointments(message: Message) -> None:
-        await run_appointments_list(message, backend)
+        await run_appointments_list(message, backend, display_timezone)
 
     @router.callback_query(CancelAppointmentCb.filter())
     async def on_cancel_appointment(callback: CallbackQuery, callback_data: CancelAppointmentCb) -> None:

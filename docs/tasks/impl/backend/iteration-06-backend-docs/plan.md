@@ -1,4 +1,4 @@
-# iter-06 — Backend docs: план реализации
+# iter-be-06 — Backend docs: план реализации
 
 ## Цель
 
@@ -21,7 +21,7 @@
 | `docs/plan.md` | проверить / исправить ссылки |
 | `docs/tasks/impl/backend/iteration-06-backend-docs/plan.md` | создать (этот файл) |
 | `docs/tasks/impl/backend/iteration-06-backend-docs/summary.md` | создать после реализации |
-| `docs/tasks/tasklist-backend.md` | обновить статус iter-06 |
+| `docs/tasks/tasklist-backend.md` | обновить статус iter-be-06 |
 
 ## Критерии готовности
 

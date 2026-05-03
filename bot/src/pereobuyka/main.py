@@ -31,7 +31,7 @@ async def _run() -> None:
         consultation_read_timeout=config.consultation_request_timeout,
     )
 
-    dp.include_router(build_root_router(backend=backend))
+    dp.include_router(build_root_router(backend=backend, display_timezone=config.display_timezone))
 
     try:
         await dp.start_polling(bot)

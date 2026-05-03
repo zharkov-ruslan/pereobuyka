@@ -314,6 +314,36 @@ class _UserClient:
         raw = _parse_response(response)
         return cast(ConsultationResponse, self._ensure_object(raw))
 
+    async def transcribe_voice(
+        self,
+        audio: bytes,
+        *,
+        filename: str,
+        content_type: str | None = None,
+    ) -> str:
+        """Распознать голос (байты файла Telegram) в текст через backend STT."""
+        ct = content_type or "application/octet-stream"
+        try:
+            response = await self._http.post(
+                f"{self._base_url}/api/v1/consultation/transcribe",
+                headers=self._headers,
+                files={"file": (filename, audio, ct)},
+                timeout=httpx.Timeout(connect=15.0, read=120.0, write=30.0, pool=10.0),
+            )
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            logger.warning("Backend unavailable: %s", exc)
+            raise BackendUnavailableError from exc
+        raw = _parse_response(response)
+        if not isinstance(raw, dict):
+            raise BackendError(
+                status_code=500,
+                code="INVALID_RESPONSE",
+                message="Ожидался JSON-объект",
+            )
+        t = raw.get("text")
+        text = t.strip() if isinstance(t, str) else ""
+        return text
+
     async def _get_items(self, path: str, params: dict[str, str | int]) -> list[dict[str, Any]]:
         try:
             response = await self._http.get(

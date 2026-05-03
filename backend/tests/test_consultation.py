@@ -27,7 +27,10 @@ def openrouter_key(monkeypatch: pytest.MonkeyPatch) -> None:
     get_settings.cache_clear()
 
 
-def test_consultation_requires_openrouter_key(client: TestClient, auth_override: UUID) -> None:
+def test_consultation_requires_openrouter_key(
+    client: TestClient, auth_override: UUID, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "")
     get_settings.cache_clear()
     response = client.post("/api/v1/consultation/messages", json={"message": "Привет"})
     assert response.status_code == 503

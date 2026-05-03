@@ -26,6 +26,7 @@ class ConsultationRunner(Protocol):
         request_id: UUID,
         llm_client: OpenRouterChatClient,
         history: list[dict[str, str]] | None = None,
+        appointment_source: str = "web",
     ) -> ConsultationResult: ...
 
 
