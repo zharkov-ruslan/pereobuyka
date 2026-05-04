@@ -184,7 +184,7 @@ journey
 |------------|------------|
 | **Telegram Bot API** | Канал взаимодействия с клиентами через бота |
 | **OpenRouter** | Провайдер **LLM**: консультационные диалоги на основе контекста; NL→SQL для админ-аналитики ([ADR-006](tech/adr/adr-006-text-to-sql.md)). При `SPEECH_TO_TEXT_PROVIDER=openrouter` — тот же хост для **STT** ([ADR-005](tech/adr/adr-005-speech-to-text.md)) |
-| **Облачный speech-to-text (STT)** | Распознавание голосовых сообщений Telegram в текст перед консультацией; режимы OpenRouter или OpenAI-совместимый multipart — [ADR-005](tech/adr/adr-005-speech-to-text.md), подробности в [integrations.md](tech/integrations.md) |
+| **Облачный speech-to-text (STT)** | Распознавание голосовых сообщений в Telegram или Web чате в текст перед консультацией; режимы OpenRouter или OpenAI-совместимый multipart — [ADR-005](tech/adr/adr-005-speech-to-text.md), подробности в [integrations.md](tech/integrations.md) |
 
 ---
 

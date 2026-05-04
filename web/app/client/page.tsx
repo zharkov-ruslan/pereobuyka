@@ -87,6 +87,9 @@ export default function ClientPage() {
   const [draft, setDraft] = useState<AppointmentDraft>(EMPTY_DRAFT);
   const [slots, setSlots] = useState<SlotWindow[]>([]);
   const [showWizard, setShowWizard] = useState(false);
+  const [historyTab, setHistoryTab] = useState<"appointments" | "visits">(
+    "appointments",
+  );
   const [showCancelled, setShowCancelled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -108,16 +111,25 @@ export default function ClientPage() {
     );
   }, [draft.selectedSlotStartsAt, slots]);
 
-  const upcomingAppointments = useMemo(() => {
+  const sortedAppointments = useMemo(() => {
     return [...(data?.appointments ?? [])].sort(
       (a, b) =>
         new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
     );
   }, [data?.appointments]);
 
+  /** Запланированные и отменённые; подтверждённые (`completed`) — только во вкладке «Визиты». */
+  const bookingsTabAppointments = useMemo(() => {
+    return sortedAppointments.filter(
+      (appointment) =>
+        appointment.status === "scheduled" ||
+        appointment.status === "cancelled",
+    );
+  }, [sortedAppointments]);
+
   const visibleAppointments = showCancelled
-    ? upcomingAppointments
-    : upcomingAppointments.filter(
+    ? bookingsTabAppointments
+    : bookingsTabAppointments.filter(
         (appointment) => appointment.status !== "cancelled",
       );
 
@@ -347,26 +359,83 @@ export default function ClientPage() {
         <>
           <ClientOverview
             appointmentDraft={draft}
-            appointments={upcomingAppointments}
+            appointments={sortedAppointments}
             bonusBalance={data.bonusAccount.balance}
             visits={data.visits}
             onStartWizard={() => setShowWizard(true)}
           />
-          <AppointmentsCard
-            appointments={visibleAppointments}
-            isMutating={isMutating}
-            services={data.services}
-            showCancelled={showCancelled}
-            onCancel={cancelAppointment}
-            onToggleCancelled={() => setShowCancelled((value) => !value)}
-          />
-          <VisitsCard
-            services={data.services}
-            token={token}
-            visits={data.visits}
-            onRated={handleRated}
-            onError={(message) => setError(message)}
-          />
+
+          <div className="flex flex-col gap-3">
+            <div
+              role="tablist"
+              aria-label="Записи и визиты"
+              className="inline-flex w-fit rounded-lg border border-border bg-muted/50 p-0.5"
+            >
+              <button
+                type="button"
+                role="tab"
+                id="client-tab-appointments"
+                aria-selected={historyTab === "appointments"}
+                aria-controls="client-tabpanel-history"
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  historyTab === "appointments"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                onClick={() => setHistoryTab("appointments")}
+              >
+                Записи
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="client-tab-visits"
+                aria-selected={historyTab === "visits"}
+                aria-controls="client-tabpanel-history"
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  historyTab === "visits"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                onClick={() => setHistoryTab("visits")}
+              >
+                Визиты
+              </button>
+            </div>
+
+            <div
+              role="tabpanel"
+              id="client-tabpanel-history"
+              aria-labelledby={
+                historyTab === "appointments"
+                  ? "client-tab-appointments"
+                  : "client-tab-visits"
+              }
+            >
+              {historyTab === "appointments" ? (
+                <AppointmentsCard
+                  appointments={visibleAppointments}
+                  isMutating={isMutating}
+                  services={data.services}
+                  showCancelled={showCancelled}
+                  onCancel={cancelAppointment}
+                  onToggleCancelled={() =>
+                    setShowCancelled((value) => !value)
+                  }
+                />
+              ) : (
+                <VisitsCard
+                  services={data.services}
+                  token={token}
+                  visits={data.visits}
+                  onRated={handleRated}
+                  onError={(message) => setError(message)}
+                />
+              )}
+            </div>
+          </div>
         </>
       )}
     </div>
@@ -527,9 +596,6 @@ function AppointmentWizard({
         <Card>
           <CardHeader>
             <CardTitle>1. Услуги</CardTitle>
-            <CardDescription>
-              Черновик сохраняется в браузере после каждого изменения.
-            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             {data.services.map((service) => {
@@ -553,11 +619,6 @@ function AppointmentWizard({
                     {service.duration_minutes} мин ·{" "}
                     {formatMoney(Number(service.price))}
                   </span>
-                  {service.description && (
-                    <span className="mt-2 block text-sm text-muted-foreground">
-                      {service.description}
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -567,9 +628,6 @@ function AppointmentWizard({
         <Card>
           <CardHeader>
             <CardTitle>Расчёт</CardTitle>
-            <CardDescription>
-              Итоговый пересчёт выполняет backend при создании записи.
-            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <SummaryRow label="Услуг" value={String(selectedServices.length)} />
@@ -606,7 +664,7 @@ function AppointmentWizard({
           <CardDescription>
             Диапазон поиска: ближайшие 14 дней по выбранным услугам.
           </CardDescription>
-          <CardAction>
+          <CardAction className="flex flex-wrap items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"
@@ -615,6 +673,18 @@ function AppointmentWizard({
             >
               <RefreshCwIcon data-icon="inline-start" />
               {isSlotsLoading ? "Ищем..." : "Найти слоты"}
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                !selectedSlot ||
+                !draft.selectedServiceIds.length ||
+                isMutating
+              }
+              onClick={onSubmit}
+            >
+              <SendIcon data-icon="inline-start" />
+              {isMutating ? "Создаём..." : "Подтвердить запись"}
             </Button>
           </CardAction>
         </CardHeader>
@@ -642,25 +712,15 @@ function AppointmentWizard({
             </p>
           )}
 
-          <div className="flex flex-col gap-3 rounded-xl border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-medium">
-                {selectedSlot
-                  ? `Выбран слот ${formatDateTime(selectedSlot.starts_at)}`
-                  : "Слот пока не выбран"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                После успешного создания записи черновик будет очищен.
-              </p>
-            </div>
-            <Button
-              type="button"
-              disabled={!selectedSlot || !draft.selectedServiceIds.length || isMutating}
-              onClick={onSubmit}
-            >
-              <SendIcon data-icon="inline-start" />
-              {isMutating ? "Создаём..." : "Подтвердить запись"}
-            </Button>
+          <div className="flex flex-col gap-1 rounded-xl border bg-muted/40 p-4 text-sm">
+            <p className="font-medium">
+              {selectedSlot
+                ? `Выбран слот ${formatDateTime(selectedSlot.starts_at)}`
+                : "Слот пока не выбран"}
+            </p>
+            <p className="text-muted-foreground">
+              После успешного создания записи черновик будет очищен.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -686,9 +746,9 @@ function AppointmentsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Записи</CardTitle>
         <CardDescription>
-          Предстоящие записи. Отменённые скрыты по умолчанию.
+          Запланированные записи и отмены — без подтверждённых визитов (они во
+          вкладке «Визиты»). Отменённые скрыты по умолчанию.
         </CardDescription>
         <CardAction>
           <Button type="button" variant="outline" onClick={onToggleCancelled}>
@@ -756,7 +816,6 @@ function VisitsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Визиты</CardTitle>
         <CardDescription>
           История подтверждённых визитов и оценка качества сервиса.
         </CardDescription>

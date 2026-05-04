@@ -3,10 +3,17 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LayoutDashboardIcon, LogOutIcon, UsersRoundIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  ChartColumnBigIcon,
+  LayoutDashboardIcon,
+  LogOutIcon,
+  UsersRoundIcon,
+} from "lucide-react";
 
 import { ChatWidget } from "@/components/chat-widget";
 import { LoginForm } from "@/components/auth/login-form";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,10 +48,15 @@ const ADMIN_NAV = [
     label: "Клиенты",
     icon: UsersRoundIcon,
   },
+  {
+    href: "/admin/analytics",
+    label: "Аналитика",
+    icon: ChartColumnBigIcon,
+  },
 ] satisfies Array<{
   href: string;
   label: string;
-  icon: typeof LayoutDashboardIcon;
+  icon: LucideIcon;
 }>;
 
 export function AppShell({ children }: AppShellProps) {
@@ -102,9 +114,9 @@ export function AppShell({ children }: AppShellProps) {
       <div className="min-h-screen bg-muted">
         <div className="mx-auto flex min-h-screen w-full max-w-screen-2xl flex-col">
           <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-            <div className="flex flex-col gap-0 px-4 py-3 lg:px-8">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
+            <div className="flex flex-col gap-0 px-3 py-3 lg:px-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                   <Link
                     href={homeHref}
                     className="shrink-0 text-lg font-semibold text-foreground transition-colors hover:text-primary"
@@ -123,7 +135,8 @@ export function AppShell({ children }: AppShellProps) {
                     </h1>
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
+                  <ThemeToggle />
                   {role === "admin" ? (
                     <Badge variant="outline" className="hidden sm:inline-flex">
                       Админ
@@ -148,14 +161,16 @@ export function AppShell({ children }: AppShellProps) {
                 >
                   {ADMIN_NAV.map((item) => {
                     const Icon = item.icon;
-                    const isActive = pathname === item.href;
+                    const isActive =
+                      pathname === item.href ||
+                      pathname === `${item.href}/`;
 
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
                         className={cn(
-                          "inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                          "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
                           isActive
                             ? "bg-accent text-accent-foreground"
                             : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -171,7 +186,7 @@ export function AppShell({ children }: AppShellProps) {
             </div>
           </header>
 
-          <main className="flex-1 p-4 lg:p-8">
+          <main className="flex-1 px-3 py-4 lg:px-4 lg:py-6">
             {isForbidden ? (
               <Card>
                 <CardHeader>
