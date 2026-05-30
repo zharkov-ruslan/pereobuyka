@@ -1,5 +1,5 @@
 .PHONY: install run backend-install backend-run backend-stop backend-test backend-lint bot-install bot-run bot-stop bot-test bot-lint
-.PHONY: web-install web-dev web-lint web-build
+.PHONY: web-install web-dev web-lint web-build web-test
 .PHONY: db-up db-down db-reset db-migrate db-seed db-psql
 
 # Удобные алиасы для бота (корневого pyproject больше нет)
@@ -54,6 +54,9 @@ web-lint:
 
 web-build:
 	cd web && pnpm build
+
+web-test:
+	cd web && pnpm test
 
 # ── Локальная PostgreSQL (iter-db-04; см. backend/README.md) ───────────────
 # Фиксированное имя проекта: на Windows при пути с кириллицей иначе бывает «project name must not be empty».

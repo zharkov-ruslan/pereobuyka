@@ -13,5 +13,11 @@
 - Пользовательские сценарии: [`docs/vision.md`](../../vision.md) §4
 - Модель данных: [`tech/data-model.md`](../data-model.md)
 
+## Swagger UI и ReDoc
 
-Просмотр в Swagger UI планируется после каркаса FastAPI (**iter-be-03**).
+При запущенном backend (см. [`backend/README.md`](../../../backend/README.md)):
+
+- **Swagger UI:** `http://127.0.0.1:8000/docs`
+- **ReDoc:** `http://127.0.0.1:8000/redoc`
+
+OpenAPI в репозитории ([`openapi.yaml`](openapi.yaml)) и схема в рантайме должны совпадать; при расхождениях приоритет у актуального ответа `/openapi.json` после деплоя, в разработке — синхронизировать YAML с кодом.

@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Переобуйка — Web (Next.js)
 
-## Getting Started
+Клиентский и административный интерфейс: [Next.js](https://nextjs.org) App Router, React, TypeScript, [shadcn/ui](https://ui.shadcn.com), Tailwind CSS. API — отдельный сервис в [`../backend/`](../backend/).
 
-First, run the development server:
+## Требования
+
+- Node.js **22+**
+- **pnpm** (менеджер пакетов монорепозитория)
+
+## Быстрый старт
+
+Из **корня** репозитория (рекомендуется):
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+make web-install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Создать `web/.env` из шаблона (Windows PowerShell):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+Copy-Item web\.env.example web\.env
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+По умолчанию [`web/.env.example`](.env.example) задаёт `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000` (на Windows предпочтительнее **127.0.0.1**, не `localhost` — см. [корневой README](../README.md)).
 
-## Learn More
+Запуск dev-сервера (нужен поднятый backend):
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+make web-dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Открыть [http://localhost:3000](http://localhost:3000).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Проверки качества:
 
-## Deploy on Vercel
+```bash
+make web-lint
+make web-build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Тесты
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Автотестов UI пока нет. Скрипт `pnpm test` (и `make web-test` из корня) — **заглушка** с кодом выхода 0, чтобы единообразно вызывать «тестовый» шаг в скриптах; реальные тесты планируются отдельно. См. [`package.json`](package.json).
+
+## Документация проекта
+
+- [Онбординг](../docs/onboarding.md) · [Архитектура](../docs/architecture.md)
+- [Корневой README](../README.md) — полный онбординг (БД, backend, бот)
+- [docs/vision.md](../docs/vision.md) — видение и границы системы
+- [docs/tasks/tasklist-frontend.md](../docs/tasks/tasklist-frontend.md) — итерации фронтенда
+- HTTP API: [docs/tech/api/openapi.yaml](../docs/tech/api/openapi.yaml), [api-contracts.md](../docs/tech/api/api-contracts.md)

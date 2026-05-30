@@ -10,9 +10,50 @@
 
 ## Документация
 
+- [Онбординг](docs/onboarding.md) · [Архитектура](docs/architecture.md)
+- [Техническое видение и границы системы](docs/vision.md) — источник истины по стеку и слоям
 - [Дорожная карта](docs/plan.md)
 - [Бэклог отложенных улучшений](docs/backlog.md)
 - [Tasklists по областям](docs/tasks/) (`tasklist-*.md`)
+- [Модель данных](docs/tech/data-model.md) · [HTTP API (OpenAPI)](docs/tech/api/openapi.yaml) · [Контракты (текст)](docs/tech/api/api-contracts.md)
+- [Участие в разработке](CONTRIBUTING.md) · [Подсказки для AI-агентов](docs/AGENTS.md) · [Аудит docs ↔ code](docs/doc-audit.md)
+
+## Первый запуск за один сеанс
+
+Выполняйте по порядку из **корня** репозитория (нужны [требования](#требования) и рабочий **GNU Make**; на Windows — Git Bash, WSL или отдельная установка Make).
+
+1. **Шаблоны окружения:** скопировать и заполнить секреты (одинаковый **`BOT_SECRET`** в `backend/.env` и `bot/.env`).
+
+   ```powershell
+   Copy-Item backend\.env.example backend\.env
+   Copy-Item bot\.env.example bot\.env
+   Copy-Item web\.env.example web\.env
+   ```
+
+   В `backend/.env` для полного API и миграций задайте PostgreSQL, например:
+
+   `DATABASE_URL=postgresql+asyncpg://pereobuyka:pereobuyka@127.0.0.1:5432/pereobuyka`
+
+2. **База:** `make db-up` → `make db-migrate` → `make db-seed` (подробности — [backend/README.md](backend/README.md)).
+
+3. **Backend:** `make backend-install` → `make backend-run`.
+
+4. **Проверка (smoke):** см. раздел [Smoke-проверки](#smoke-проверки) ниже.
+
+5. По необходимости: **web** — `make web-install`, `make web-dev`; **бот** — `make bot-install`, заполнить `TELEGRAM_BOT_TOKEN`, `make bot-run`.
+
+Ссылки на установку инструментов: [uv](https://docs.astral.sh/uv/getting-started/installation/), [pnpm](https://pnpm.io/installation), [Node.js](https://nodejs.org/).
+
+## Smoke-проверки
+
+После `make backend-run`:
+
+- **Health:** открыть в браузере или `curl` — `http://127.0.0.1:8000/health` (ожидается успешный ответ).
+- **Документация API:** `http://127.0.0.1:8000/docs` (Swagger UI).
+- **Web:** с поднятым backend — `make web-dev`, затем `http://localhost:3000`.
+- **Бот:** при валидном `TELEGRAM_BOT_TOKEN` и совпадающем `BOT_SECRET` — диалог в Telegram (команда `/start`).
+
+Полная матрица линтеров и тестов: [CONTRIBUTING.md](CONTRIBUTING.md). Подробный гайд: [docs/onboarding.md](docs/onboarding.md).
 
 ## Требования
 
@@ -87,7 +128,10 @@ make web-dev
 ```bash
 make web-lint
 make web-build
+make web-test
 ```
+
+(`make web-test` сейчас запускает заглушку: автотестов фронта нет — см. [web/README.md](web/README.md) и [web/package.json](web/package.json).)
 
 ### Бот
 

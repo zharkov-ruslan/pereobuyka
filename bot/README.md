@@ -8,8 +8,10 @@
 cd bot
 uv sync
 copy .env.example .env   # Windows: заполнить переменные
-uv run python -m pereobuyka.main
+uv run python run_bot.py
 ```
+
+Точка входа **`run_bot.py`** (в корневом `make bot-run` то же самое) добавляет `src/` в `PYTHONPATH` и вызывает `pereobuyka.main` — удобно без editable-install пакета. Альтернатива после настройки окружения: `uv run python -m pereobuyka.main` (если пакет установлен как модуль).
 
 Из корня репозитория: `make bot-install`, `make bot-run`.
 

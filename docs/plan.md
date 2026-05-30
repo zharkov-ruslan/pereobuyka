@@ -43,8 +43,8 @@
 | 1 | Фундамент: backend и модель данных | Ядро системы готово к подключению каналов | ✅ done | backend, database | [tasklist-backend.md](tasks/tasklist-backend.md), [tasklist-database.md](tasks/tasklist-database.md) |
 | 2 | Telegram-бот | Первый рабочий канал для клиента | ✅ done | backend, integrations | [tasklist-02-bot.md](tasks/tasklist-02-bot.md), [tasklist-02-integrations.md](tasks/tasklist-02-integrations.md) |
 | 3 | LLM-консультант | Диалоговая консультация через бота | ✅ done | backend, integrations | [tasklist-03-llm.md](tasks/tasklist-03-llm.md) |
-| 4 | Административный веб-интерфейс | Управление прайсом, расписанием и записями без разработчика | ⚪ planned | frontend, backend | [tasklist-04-admin-web.md](tasks/tasklist-04-admin-web.md) |
-| 5 | Клиентский веб-интерфейс | Альтернативный канал: те же сценарии, что в боте | ⚪ planned | frontend, backend | [tasklist-05-client-web.md](tasks/tasklist-05-client-web.md) |
+| 4 | Административный веб-интерфейс | Управление прайсом, расписанием и записями без разработчика | ✅ done | frontend, backend | [tasklist-frontend.md](tasks/tasklist-frontend.md) (этап 4) |
+| 5 | Клиентский веб-интерфейс | Альтернативный канал: те же сценарии, что в боте | ✅ done | frontend, backend | [tasklist-frontend.md](tasks/tasklist-frontend.md) (этап 5) |
 | 6 | Production-ready и delivery | Система пригодна к эксплуатации и обслуживанию | ⚪ planned | devops | [tasklist-06-devops.md](tasks/tasklist-06-devops.md) |
 
 ---
@@ -181,9 +181,11 @@ LLM-консультант — ключевая дифференцирующая
 
 **Результат:** Веб-панель администратора, через которую можно управлять прайсом, расписанием, просматривать записи и подтверждать визиты.
 
-**Статус:** ⚪ planned
+**Статус:** ✅ done
 
-**Активные области:** frontend, backend
+**Факт реализации:** по [tasklist-frontend.md](tasks/tasklist-frontend.md) — **iter-fe-00–04** (спека, каркас `web/`, панель администратора, экран клиентов), **iter-fe-09** (Text-to-SQL в админке). Стек: Next.js + shadcn/ui. Детали — [ui-requirements.md](ui/ui-requirements.md).
+
+**Активные области:** нет (относительно DoD этапа 4 в этом документе).
 
 **Зависимость:** Этап 1 завершён (API-контракты готовы). Разработка frontend может идти параллельно с этапами 2–3 после фиксации контрактов backend.
 
@@ -198,12 +200,12 @@ LLM-консультант — ключевая дифференцирующая
 - Администратор блокирует день в расписании — слоты на этот день исчезают из доступных для записи
 
 **Выходные артефакты:**
-- `web/` — frontend-проект (стек TBD)
-- ADR на выбор frontend-стека
-- `docs/tasks/tasklist-04-admin-web.md`
+- `web/` — frontend-проект (Next.js; см. [`docs/vision.md`](vision.md))
+- ADR на выбор frontend-стека (при необходимости уточнения)
+- `docs/tasks/tasklist-frontend.md` (итерации админки — этап 4 в таблице связи)
 
 **Связь с tasklists:**
-- [`tasklist-04-admin-web.md`](tasks/tasklist-04-admin-web.md)
+- [`tasklist-frontend.md`](tasks/tasklist-frontend.md)
 
 ---
 
@@ -216,14 +218,16 @@ LLM-консультант — ключевая дифференцирующая
 
 **Результат:** Веб-интерфейс клиента: консультация, просмотр прайса, запись, история визитов, баланс бонусов — идентично возможностям бота.
 
-**Статус:** ⚪ planned
+**Статус:** ✅ done
 
-**Активные области:** frontend, backend
+**Факт реализации:** клиентский кабинет и визард записи — **iter-fe-05** и последующие (чат iter-fe-06, голос iter-fe-08). MVP-вход: `POST /api/v1/auth/web` по **telegram username**, не по телефону (см. [doc-audit.md](doc-audit.md) DA-03).
+
+**Активные области:** нет (относительно DoD этапа 5 в этом документе).
 
 **Зависимость:** Этап 4 завершён (frontend-инфраструктура и стек зафиксированы). Часть компонентов переиспользуется из административного интерфейса.
 
 **Что должно появиться:**
-- Реализованы сценарии клиента в веб: регистрация/авторизация по телефону, просмотр прайса, запись, история визитов, управление записями, бонусный счёт
+- Реализованы сценарии клиента в веб: регистрация/авторизация (MVP — по `telegram_username`, см. auth/web), просмотр прайса, запись, история визитов, управление записями, бонусный счёт
 - Роль `client` изолирована от роли `admin` на уровне маршрутизации и прав
 
 **Что можно проверить:**
@@ -233,10 +237,10 @@ LLM-консультант — ключевая дифференцирующая
 
 **Выходные артефакты:**
 - Клиентская часть `web/` (новые экраны и маршруты)
-- `docs/tasks/tasklist-05-client-web.md`
+- `docs/tasks/tasklist-frontend.md` (итерации клиентского веба — этап 5)
 
 **Связь с tasklists:**
-- [`tasklist-05-client-web.md`](tasks/tasklist-05-client-web.md)
+- [`tasklist-frontend.md`](tasks/tasklist-frontend.md)
 
 ---
 
