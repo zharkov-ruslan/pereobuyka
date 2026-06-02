@@ -34,13 +34,32 @@ Copy-Item bot\.env.example bot\.env
 Copy-Item web\.env.example web\.env
 ```
 
-Секреты не коммитить (`.env` в `.gitignore`).
+Секреты не коммитить (`.env`, `.env.docker` в `.gitignore`).
 
----
+### Вариант A: полный стек в Docker
 
-## 2. Настройка каждого компонента
+```powershell
+Copy-Item .env.docker.example .env.docker
+```
 
-### База данных (PostgreSQL)
+Заполните `.env.docker` (минимум `BOT_SECRET`, `ADMIN_API_TOKEN`). Затем:
+
+```bash
+make compose-up
+make compose-seed
+```
+
+Инструкция: [tech/docker-compose-local.md](tech/docker-compose-local.md).
+
+### Вариант B: гибрид (PostgreSQL в Docker, сервисы на хосте)
+
+```powershell
+Copy-Item backend\.env.example backend\.env
+Copy-Item bot\.env.example bot\.env
+Copy-Item web\.env.example web\.env
+```
+
+#### База данных (PostgreSQL)
 
 Рекомендуется для полного API, миграций и seed. В `backend/.env`:
 
@@ -57,6 +76,10 @@ make db-seed
 Альтернатива без Docker: в `backend/.env.example` по умолчанию **SQLite** (`sqlite+aiosqlite:///./dev.db`) — быстрый прогон, но **без** Alembic/seed и с урезанным набором маршрутов (см. [backend/README.md](../backend/README.md)).
 
 Проверка БД: `make db-psql` → `\dt` (список таблиц).
+
+---
+
+## 2. Настройка каждого компонента (гибридный режим)
 
 ### Backend
 

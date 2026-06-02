@@ -37,7 +37,7 @@
 | **4** — Административный веб-интерфейс | iter-fe-00–02 (спека, API, каркас), iter-fe-03–04 (панель администратора, клиенты), iter-fe-06–07 (чат в UI, качество кода) |
 | **5** — Клиентский веб-интерфейс | iter-fe-05 (личный кабинет и визард); общий каталог `web/` — iter-fe-02 |
 | **3** — LLM-консультант | iter-fe-06 (чат), iter-fe-08–09 (голос, Text-to-SQL); эндпоинт консультации — в backend |
-| **6** — Production-ready | iter-fe-07 (ревью frontend); CI/CD и инфра — [`tasklist-06-devops.md`](tasklist-06-devops.md) |
+| **6** — Production-ready | iter-fe-07 (ревью frontend); CI/CD и инфра — [`tasklist-devops.md`](tasklist-devops.md) |
 
 ---
 

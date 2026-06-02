@@ -10,6 +10,7 @@
 
 ## Документация
 
+- [Docker Compose (полный стек)](docs/tech/docker-compose-local.md)
 - [Онбординг](docs/onboarding.md) · [Архитектура](docs/architecture.md)
 - [Техническое видение и границы системы](docs/vision.md) — источник истины по стеку и слоям
 - [Дорожная карта](docs/plan.md)
@@ -19,6 +20,32 @@
 - [Участие в разработке](CONTRIBUTING.md) · [Подсказки для AI-агентов](docs/AGENTS.md) · [Аудит docs ↔ code](docs/doc-audit.md)
 
 ## Первый запуск за один сеанс
+
+### Вариант A: полный стек в Docker (рекомендуется для smoke)
+
+```powershell
+Copy-Item .env.docker.example .env.docker
+# Заполните BOT_SECRET, ADMIN_API_TOKEN; при необходимости TELEGRAM_BOT_TOKEN и OPENROUTER_API_KEY
+make compose-up
+make compose-seed
+make compose-health
+```
+
+Web: http://127.0.0.1:3000 · API: http://127.0.0.1:8000/docs. Подробности: [docs/tech/docker-compose-local.md](docs/tech/docker-compose-local.md).
+
+### Вариант A2: стек из GHCR (без локальной сборки)
+
+После публикации образов workflow **Publish Docker images** (push в `master` или ручной run):
+
+```powershell
+make compose-registry-up
+make compose-seed
+make compose-health
+```
+
+Образы: `ghcr.io/zharkov-ruslan/pereobuyka-{backend,bot,web}`. Подробности: [Запуск из GHCR](docs/tech/docker-compose-local.md#запуск-из-ghcr).
+
+### Вариант B: сервисы на хосте (гибридная разработка)
 
 Выполняйте по порядку из **корня** репозитория (нужны [требования](#требования) и рабочий **GNU Make**; на Windows — Git Bash, WSL или отдельная установка Make).
 

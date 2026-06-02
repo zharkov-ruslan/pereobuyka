@@ -75,8 +75,9 @@ flowchart LR
 | `bot/` | Python, aiogram 3, uv | Telegram-клиент |
 | `web/` | Next.js App Router, React, TypeScript, pnpm, shadcn/ui | Web-клиент |
 | `docs/` | Markdown | Vision, API, tasklists, ADR |
+| [`devops/`](devops/) | Docker | Dockerfile и .dockerignore по сервисам |
 
-Локально PostgreSQL поднимается через `docker-compose.yml` (только БД); полный compose всех сервисов — этап 6 в [plan.md](plan.md).
+Локально полный стек поднимается через [`docker-compose.yml`](docker-compose.yml) (postgres, backend, bot, web); гибридный режим — только БД в compose, сервисы на хосте. См. [`docs/tech/docker-compose-local.md`](docs/tech/docker-compose-local.md).
 
 ---
 

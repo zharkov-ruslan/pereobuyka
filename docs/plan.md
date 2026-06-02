@@ -45,7 +45,7 @@
 | 3 | LLM-консультант | Диалоговая консультация через бота | ✅ done | backend, integrations | [tasklist-03-llm.md](tasks/tasklist-03-llm.md) |
 | 4 | Административный веб-интерфейс | Управление прайсом, расписанием и записями без разработчика | ✅ done | frontend, backend | [tasklist-frontend.md](tasks/tasklist-frontend.md) (этап 4) |
 | 5 | Клиентский веб-интерфейс | Альтернативный канал: те же сценарии, что в боте | ✅ done | frontend, backend | [tasklist-frontend.md](tasks/tasklist-frontend.md) (этап 5) |
-| 6 | Production-ready и delivery | Система пригодна к эксплуатации и обслуживанию | ⚪ planned | devops | [tasklist-06-devops.md](tasks/tasklist-06-devops.md) |
+| 6 | Production-ready и delivery | Система пригодна к эксплуатации и обслуживанию | 🔄 in-progress | devops | [tasklist-devops.md](tasks/tasklist-devops.md) |
 
 ---
 
@@ -253,9 +253,13 @@ LLM-консультант — ключевая дифференцирующая
 
 **Результат:** Система разворачивается автоматически; CI проверяет каждый PR; деплой в production воспроизводим и задокументирован.
 
-**Статус:** ⚪ planned
+**Статус:** 🔄 in-progress (iter-dev-01 ✅ локальный compose; iter-dev-02 ✅ GHCR; полный CI/deploy — позже)
 
-**Активные области:** devops
+**Факт реализации (iter-dev-01):** `devops/`, полный [`docker-compose.yml`](../docker-compose.yml), [`Makefile`](../Makefile) `compose-*`, [`docs/tech/docker-compose-local.md`](tech/docker-compose-local.md).
+
+**Факт реализации (iter-dev-02):** [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml), [`docker-compose.registry.yml`](../docker-compose.registry.yml), `compose-registry-*`, раздел GHCR в [`docker-compose-local.md`](tech/docker-compose-local.md). См. [`tasklist-devops.md`](tasks/tasklist-devops.md).
+
+**Активные области:** devops (следующие итерации — CI pytest/lint, deploy)
 
 **Зависимость:** Этапы 1–3 завершены для минимального деплоя бота; этапы 4–5 для полного деплоя системы. Базовую инфраструктуру (Docker, CI) можно готовить параллельно начиная с этапа 2.
 
@@ -273,8 +277,8 @@ LLM-консультант — ключевая дифференцирующая
 **Выходные артефакты:**
 - `Dockerfile`, `docker-compose.yml`
 - CI-конфигурация (`.github/workflows/` или аналог)
-- `docs/tasks/tasklist-06-devops.md`
+- `docs/tasks/tasklist-devops.md`
 - `README.md` с инструкцией по запуску
 
 **Связь с tasklists:**
-- [`tasklist-06-devops.md`](tasks/tasklist-06-devops.md)
+- [`tasklist-devops.md`](tasks/tasklist-devops.md)

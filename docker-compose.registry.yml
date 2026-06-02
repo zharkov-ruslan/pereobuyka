@@ -1,0 +1,19 @@
+# Override для запуска из GHCR без локальной сборки (iter-dev-02).
+# Использование: docker compose -f docker-compose.yml -f docker-compose.registry.yml up -d --wait
+#
+# Переменные (можно задать в .env.docker или окружении):
+#   REGISTRY   — префикс registry с owner, по умолчанию ghcr.io/zharkov-ruslan
+#   IMAGE_TAG  — тег образов, по умолчанию latest
+
+services:
+  backend:
+    build: !reset null
+    image: ${REGISTRY:-ghcr.io/zharkov-ruslan}/pereobuyka-backend:${IMAGE_TAG:-latest}
+
+  bot:
+    build: !reset null
+    image: ${REGISTRY:-ghcr.io/zharkov-ruslan}/pereobuyka-bot:${IMAGE_TAG:-latest}
+
+  web:
+    build: !reset null
+    image: ${REGISTRY:-ghcr.io/zharkov-ruslan}/pereobuyka-web:${IMAGE_TAG:-latest}

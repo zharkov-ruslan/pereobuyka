@@ -1,5 +1,6 @@
-# Локальная PostgreSQL для разработки (iter-db-04).
-# Данные в volume `pgdata`; `make db-reset` удаляет volume и все данные.
+# Полный локальный стек «Переобуйка» (iter-dev-01).
+# Скопируйте .env.docker.example → .env.docker и заполните секреты.
+# См. docs/tech/docker-compose-local.md
 
 services:
   postgres:
@@ -17,6 +18,61 @@ services:
       interval: 2s
       timeout: 5s
       retries: 15
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../devops/backend/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.docker
+    environment:
+      DATABASE_URL: postgresql+asyncpg://pereobuyka:pereobuyka@postgres:5432/pereobuyka
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+    restart: unless-stopped
+
+  bot:
+    build:
+      context: ./bot
+      dockerfile: ../devops/bot/Dockerfile
+    env_file:
+      - .env.docker
+    environment:
+      BACKEND_BASE_URL: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: ../devops/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata:
